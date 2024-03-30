@@ -1,8 +1,10 @@
+use cgmath::Array;
 use wgpu::{
-    CompositeAlphaMode, Device, DeviceDescriptor, Features, FragmentState, Instance,
-    InstanceDescriptor, Limits, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue,
-    RenderPipeline, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
-    VertexState,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
+    DeviceDescriptor, Features, FragmentState, Instance, InstanceDescriptor, Limits,
+    MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
+    RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, TextureUsages, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -12,6 +14,9 @@ pub struct GraphicsContext<'a> {
     surface: Surface<'a>,
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
+    uniform_buffer: Buffer,
+    uniform_bind_group: BindGroup,
+    uniform_bind_group_layout: BindGroupLayout,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -68,9 +73,50 @@ impl<'a> GraphicsContext<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
+        let uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Uniform buffer descriptor"),
+            size: (std::mem::size_of::<f32>() * 3) as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let buffer_data = cgmath::Vector3::new(0.2, 0.8, 0.45);
+        let buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                buffer_data.as_ptr() as *const u8,
+                std::mem::size_of::<cgmath::Vector3<f32>>(),
+            )
+        };
+
+        queue.write_buffer(&uniform_buffer, 0, buffer_data);
+
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Bind group layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Bind group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&uniform_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -115,6 +161,9 @@ impl<'a> GraphicsContext<'a> {
             surface,
             config,
             render_pipeline,
+            uniform_buffer,
+            uniform_bind_group,
+            uniform_bind_group_layout,
         }
     }
 
@@ -160,6 +209,7 @@ impl<'a> GraphicsContext<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         render_pass.draw(0..3, 0..1);
 
         drop(render_pass);
