@@ -97,8 +97,6 @@ impl<'a> GraphicsContext<'a> {
 
         let size = std::mem::size_of::<UniformData>() as u64;
 
-        println!("Buffer size: {}", size);
-
         for _ in 0..100 {
             let uniform_buffer = device.create_buffer(&BufferDescriptor {
                 label: Some("Uniform buffer descriptor"),
