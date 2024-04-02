@@ -1,10 +1,8 @@
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
-    DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits,
-    MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
-    RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
-    VertexAttribute, VertexBufferLayout, VertexState,
+    Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device, DeviceDescriptor, Features,
+    FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState,
+    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline, RequestAdapterOptions,
+    Surface, SurfaceConfiguration, TextureUsages, VertexAttribute, VertexBufferLayout, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -27,8 +25,6 @@ pub struct GraphicsContext<'a> {
     surface: Surface<'a>,
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
-    bind_group: BindGroup,
-    number_of_elements: u64,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
 }
@@ -87,20 +83,6 @@ impl<'a> GraphicsContext<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Bind group layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX_FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
         let element_size = std::mem::size_of::<BufferElementData>() as u64;
         let number_of_elements = 100_u64;
         let mut buffer_data: Vec<BufferElementData> = Vec::new();
@@ -143,15 +125,6 @@ impl<'a> GraphicsContext<'a> {
         });
 
         queue.write_buffer(&storage_buffer, 0, buffer_data);
-
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Bind group"),
-            layout: &bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: storage_buffer.as_entire_binding(),
-            }],
-        });
 
         // VERTEX BUFFER
         let vertex_buffer_data = &[
@@ -207,7 +180,7 @@ impl<'a> GraphicsContext<'a> {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
 
@@ -260,8 +233,6 @@ impl<'a> GraphicsContext<'a> {
             surface,
             config,
             render_pipeline,
-            bind_group,
-            number_of_elements,
             vertex_buffer,
             index_buffer,
         }
@@ -311,8 +282,7 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-        render_pass.draw_indexed(0..6, 0, 0..(self.number_of_elements as u32));
+        render_pass.draw_indexed(0..6, 0, 0..1);
 
         drop(render_pass);
         let encoder = encoder.finish();
