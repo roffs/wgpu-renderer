@@ -6,17 +6,14 @@ use wgpu::{
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
+use crate::vertex::Vertex;
+
 #[repr(C)]
 struct BufferElementData {
     color: (f32, f32, f32),
     _layout_offset: u32,
     scale: (f32, f32),
     offset: (f32, f32),
-}
-
-#[repr(C)]
-struct VertexData {
-    position: (f32, f32),
 }
 
 pub struct GraphicsContext<'a> {
@@ -128,23 +125,15 @@ impl<'a> GraphicsContext<'a> {
 
         // VERTEX BUFFER
         let vertex_buffer_data = &[
-            VertexData {
-                position: (-0.5, -0.5),
-            },
-            VertexData {
-                position: (0.5, -0.5),
-            },
-            VertexData {
-                position: (0.5, 0.5),
-            },
-            VertexData {
-                position: (-0.5, 0.5),
-            },
+            Vertex::new((-0.5, -0.5)),
+            Vertex::new((0.5, -0.5)),
+            Vertex::new((0.5, 0.5)),
+            Vertex::new((-0.5, 0.5)),
         ];
 
         let vertex_buffer_data = unsafe {
             std::slice::from_raw_parts(
-                vertex_buffer_data as *const [VertexData] as *const u8,
+                vertex_buffer_data as *const [Vertex] as *const u8,
                 (element_size * number_of_elements) as usize,
             )
         };
@@ -191,7 +180,7 @@ impl<'a> GraphicsContext<'a> {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[VertexBufferLayout {
-                    array_stride: std::mem::size_of::<VertexData>() as u64,
+                    array_stride: std::mem::size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &[VertexAttribute {
                         format: wgpu::VertexFormat::Float32x2,
