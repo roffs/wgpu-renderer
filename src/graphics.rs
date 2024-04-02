@@ -1,12 +1,15 @@
 use wgpu::{
-    Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device, DeviceDescriptor, Features,
-    FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode,
+    Device, DeviceDescriptor, Extent3d, Features, FragmentState, ImageCopyTextureBase,
+    ImageDataLayout, IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d,
     PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline, RequestAdapterOptions,
-    Surface, SurfaceConfiguration, TextureUsages, VertexAttribute, VertexBufferLayout, VertexState,
+    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureDescriptor,
+    TextureUsages, VertexAttribute, VertexBufferLayout, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::vertex::Vertex;
+use crate::{image::Image, vertex::Vertex};
 
 #[repr(C)]
 struct BufferElementData {
@@ -24,6 +27,7 @@ pub struct GraphicsContext<'a> {
     render_pipeline: RenderPipeline,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
+    texture_bind_group: BindGroup,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -80,67 +84,25 @@ impl<'a> GraphicsContext<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let element_size = std::mem::size_of::<BufferElementData>() as u64;
-        let number_of_elements = 100_u64;
-        let mut buffer_data: Vec<BufferElementData> = Vec::new();
-
-        for _ in 0..number_of_elements {
-            let r = rand::random::<f32>();
-            let g = rand::random::<f32>();
-            let b = rand::random::<f32>();
-
-            let scale_x = rand::random::<f32>() * 0.5;
-            let scale_y = rand::random::<f32>() * 0.5;
-
-            let offset_x = (rand::random::<f32>() - 0.5) * 2.0;
-            let offset_y = (rand::random::<f32>() - 0.5) * 2.0;
-
-            let element = BufferElementData {
-                color: (r, g, b),
-                _layout_offset: 0,
-                scale: (scale_x, scale_y),
-                offset: (offset_x, offset_y),
-            };
-
-            buffer_data.push(element);
-        }
-
-        // STORAGE BUFFER
-
-        let buffer_data = unsafe {
-            std::slice::from_raw_parts(
-                buffer_data.as_slice() as *const [BufferElementData] as *const u8,
-                (element_size * number_of_elements) as usize,
-            )
-        };
-
-        let storage_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Storage buffer"),
-            size: element_size * number_of_elements,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        queue.write_buffer(&storage_buffer, 0, buffer_data);
-
         // VERTEX BUFFER
         let vertex_buffer_data = &[
-            Vertex::new((-0.5, -0.5)),
-            Vertex::new((0.5, -0.5)),
-            Vertex::new((0.5, 0.5)),
-            Vertex::new((-0.5, 0.5)),
+            Vertex::new((-0.5, -0.5), (0.0, 0.0)),
+            Vertex::new((0.5, -0.5), (1.0, 0.0)),
+            Vertex::new((0.5, 0.5), (1.0, 1.0)),
+            Vertex::new((-0.5, 0.5), (0.0, 1.0)),
         ];
 
+        let vertex_buffer_size = std::mem::size_of_val(vertex_buffer_data);
         let vertex_buffer_data = unsafe {
             std::slice::from_raw_parts(
                 vertex_buffer_data as *const [Vertex] as *const u8,
-                (element_size * number_of_elements) as usize,
+                vertex_buffer_size,
             )
         };
 
         let vertex_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Vertex buffer"),
-            size: element_size * number_of_elements,
+            size: vertex_buffer_size as u64,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -151,25 +113,113 @@ impl<'a> GraphicsContext<'a> {
 
         let index_buffer_data: &[u16] = &[0, 1, 2, 0, 2, 3];
 
+        let index_buffer_size = std::mem::size_of_val(index_buffer_data);
+
         let index_buffer_data = unsafe {
             std::slice::from_raw_parts(
                 index_buffer_data as *const [u16] as *const u8,
-                (element_size * number_of_elements) as usize,
+                index_buffer_size,
             )
         };
 
         let index_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Index buffer"),
-            size: element_size * number_of_elements,
+            size: index_buffer_size as u64,
             usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         queue.write_buffer(&index_buffer, 0, index_buffer_data);
 
+        // TEXTURE
+
+        let image = Image::new("./assets/textures/test.png");
+
+        let texture_size = Extent3d {
+            width: image.data.width(),
+            height: image.data.height(),
+            depth_or_array_layers: 1,
+        };
+
+        let texture = device.create_texture(&TextureDescriptor {
+            label: Some("Texture"),
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        queue.write_texture(
+            ImageCopyTextureBase {
+                texture: &texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &image.data.to_rgba8(),
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * image.data.width()),
+                rows_per_image: Some(image.data.height()),
+            },
+            texture_size,
+        );
+
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Texture bind group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler(&texture_sampler),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&texture_view),
+                },
+            ],
+        });
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&texture_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -182,11 +232,18 @@ impl<'a> GraphicsContext<'a> {
                 buffers: &[VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x2,
-                        offset: 0,
-                        shader_location: 0,
-                    }],
+                    attributes: &[
+                        VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: (std::mem::size_of::<f32>() * 2) as u64,
+                            shader_location: 1,
+                        },
+                    ],
                 }],
             },
             fragment: Some(FragmentState {
@@ -224,6 +281,7 @@ impl<'a> GraphicsContext<'a> {
             render_pipeline,
             vertex_buffer,
             index_buffer,
+            texture_bind_group,
         }
     }
 
@@ -271,6 +329,7 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+        render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..6, 0, 0..1);
 
         drop(render_pass);

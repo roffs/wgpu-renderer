@@ -1,4 +1,5 @@
 mod graphics;
+mod image;
 mod vertex;
 
 use graphics::GraphicsContext;
