@@ -1,7 +1,7 @@
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
-    DeviceDescriptor, Features, FragmentState, Instance, InstanceDescriptor, Limits,
+    DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits,
     MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
     RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
     VertexAttribute, VertexBufferLayout, VertexState,
@@ -30,6 +30,7 @@ pub struct GraphicsContext<'a> {
     bind_group: BindGroup,
     number_of_elements: u64,
     vertex_buffer: Buffer,
+    index_buffer: Buffer,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -153,33 +154,56 @@ impl<'a> GraphicsContext<'a> {
         });
 
         // VERTEX BUFFER
-        let vertex_buffer_data = [
-            VertexData {
-                position: (0.0, 0.5),
-            },
+        let vertex_buffer_data = &[
             VertexData {
                 position: (-0.5, -0.5),
             },
             VertexData {
                 position: (0.5, -0.5),
             },
+            VertexData {
+                position: (0.5, 0.5),
+            },
+            VertexData {
+                position: (-0.5, 0.5),
+            },
         ];
 
         let vertex_buffer_data = unsafe {
             std::slice::from_raw_parts(
-                vertex_buffer_data.as_slice() as *const [VertexData] as *const u8,
+                vertex_buffer_data as *const [VertexData] as *const u8,
                 (element_size * number_of_elements) as usize,
             )
         };
 
         let vertex_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Storage buffer"),
+            label: Some("Vertex buffer"),
             size: element_size * number_of_elements,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         queue.write_buffer(&vertex_buffer, 0, vertex_buffer_data);
+
+        // INDEX BUFFER
+
+        let index_buffer_data: &[u16] = &[0, 1, 2, 0, 2, 3];
+
+        let index_buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                index_buffer_data as *const [u16] as *const u8,
+                (element_size * number_of_elements) as usize,
+            )
+        };
+
+        let index_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Index buffer"),
+            size: element_size * number_of_elements,
+            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&index_buffer, 0, index_buffer_data);
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
@@ -239,6 +263,7 @@ impl<'a> GraphicsContext<'a> {
             bind_group,
             number_of_elements,
             vertex_buffer,
+            index_buffer,
         }
     }
 
@@ -285,8 +310,9 @@ impl<'a> GraphicsContext<'a> {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
-        render_pass.draw(0..3, 0..(self.number_of_elements as u32));
+        render_pass.draw_indexed(0..6, 0, 0..(self.number_of_elements as u32));
 
         drop(render_pass);
         let encoder = encoder.finish();
