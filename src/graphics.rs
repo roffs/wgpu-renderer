@@ -1,19 +1,24 @@
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
+    BindGroupLayoutEntry, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
     DeviceDescriptor, Features, FragmentState, Instance, InstanceDescriptor, Limits,
     MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
-    RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, TextureUsages, VertexState,
+    RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
+    VertexAttribute, VertexBufferLayout, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
 #[repr(C)]
-#[derive(Debug)]
 struct BufferElementData {
     color: (f32, f32, f32),
     _layout_offset: u32,
     scale: (f32, f32),
     offset: (f32, f32),
+}
+
+#[repr(C)]
+struct VertexData {
+    position: (f32, f32),
 }
 
 pub struct GraphicsContext<'a> {
@@ -24,6 +29,7 @@ pub struct GraphicsContext<'a> {
     render_pipeline: RenderPipeline,
     bind_group: BindGroup,
     number_of_elements: u64,
+    vertex_buffer: Buffer,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -119,14 +125,14 @@ impl<'a> GraphicsContext<'a> {
             buffer_data.push(element);
         }
 
+        // STORAGE BUFFER
+
         let buffer_data = unsafe {
             std::slice::from_raw_parts(
                 buffer_data.as_slice() as *const [BufferElementData] as *const u8,
                 (element_size * number_of_elements) as usize,
             )
         };
-
-        println!("Buffer data len: {:#?}", buffer_data.len());
 
         let storage_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Storage buffer"),
@@ -146,6 +152,35 @@ impl<'a> GraphicsContext<'a> {
             }],
         });
 
+        // VERTEX BUFFER
+        let vertex_buffer_data = [
+            VertexData {
+                position: (0.0, 0.5),
+            },
+            VertexData {
+                position: (-0.5, -0.5),
+            },
+            VertexData {
+                position: (0.5, -0.5),
+            },
+        ];
+
+        let vertex_buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                vertex_buffer_data.as_slice() as *const [VertexData] as *const u8,
+                (element_size * number_of_elements) as usize,
+            )
+        };
+
+        let vertex_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Storage buffer"),
+            size: element_size * number_of_elements,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&vertex_buffer, 0, vertex_buffer_data);
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
@@ -158,7 +193,15 @@ impl<'a> GraphicsContext<'a> {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[],
+                buffers: &[VertexBufferLayout {
+                    array_stride: std::mem::size_of::<VertexData>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[VertexAttribute {
+                        format: wgpu::VertexFormat::Float32x2,
+                        offset: 0,
+                        shader_location: 0,
+                    }],
+                }],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -195,6 +238,7 @@ impl<'a> GraphicsContext<'a> {
             render_pipeline,
             bind_group,
             number_of_elements,
+            vertex_buffer,
         }
     }
 
@@ -240,7 +284,7 @@ impl<'a> GraphicsContext<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw(0..3, 0..(self.number_of_elements as u32));
 
