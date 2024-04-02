@@ -1,23 +1,14 @@
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode,
-    Device, DeviceDescriptor, Extent3d, Features, FragmentState, ImageCopyTextureBase,
-    ImageDataLayout, IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState, Origin3d,
-    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline, RequestAdapterOptions,
-    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureDescriptor,
+    Device, DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor,
+    Limits, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
+    RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
     TextureUsages, VertexAttribute, VertexBufferLayout, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{image::Image, vertex::Vertex};
-
-#[repr(C)]
-struct BufferElementData {
-    color: (f32, f32, f32),
-    _layout_offset: u32,
-    scale: (f32, f32),
-    offset: (f32, f32),
-}
+use crate::{texture::Texture, vertex::Vertex};
 
 pub struct GraphicsContext<'a> {
     device: Device,
@@ -133,51 +124,7 @@ impl<'a> GraphicsContext<'a> {
 
         // TEXTURE
 
-        let image = Image::new("./assets/textures/test.png");
-
-        let texture_size = Extent3d {
-            width: image.data.width(),
-            height: image.data.height(),
-            depth_or_array_layers: 1,
-        };
-
-        let texture = device.create_texture(&TextureDescriptor {
-            label: Some("Texture"),
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        queue.write_texture(
-            ImageCopyTextureBase {
-                texture: &texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &image.data.to_rgba8(),
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * image.data.width()),
-                rows_per_image: Some(image.data.height()),
-            },
-            texture_size,
-        );
-
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let texture_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
+        let texture = Texture::new(&device, &queue, "./assets/textures/test.png");
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -208,11 +155,11 @@ impl<'a> GraphicsContext<'a> {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&texture_sampler),
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&texture_view),
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
                 },
             ],
         });

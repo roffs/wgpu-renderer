@@ -1,5 +1,5 @@
 mod graphics;
-mod image;
+mod texture;
 mod vertex;
 
 use graphics::GraphicsContext;
