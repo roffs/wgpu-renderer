@@ -5,23 +5,36 @@ struct OurStruct {
     offset: vec2f,
 };
 
-@group(0) @binding(0) var<uniform> ourStruct: OurStruct;
+@group(0) @binding(0) var<storage, read> ourStructs: array<OurStruct>;
 
- @vertex 
- fn vs_main(@builtin(vertex_index) vertexIndex : u32) -> @builtin(position) vec4f {
-
-    var pos = array(
-        vec2f( 0.0,  0.5),  // top center
-        vec2f(-0.5, -0.5),  // bottom left
-        vec2f( 0.5, -0.5)   // bottom right
-    );
-
-    return vec4f(pos[vertexIndex] * ourStruct.scale + ourStruct.offset, 0.0, 1.0);
+struct VSOutput {
+    @builtin(position) position: vec4f,
+    @location(0) color: vec3f,
 }
 
-@group(0) @binding(0) var<uniform> color: vec3f;
- 
+@vertex 
+fn vs_main(
+    @builtin(vertex_index) vertexIndex : u32,
+    @builtin(instance_index) instanceIndex: u32
+) -> VSOutput {
+
+    var pos = array(
+        vec2f( 0.0,  0.5),  
+        vec2f(-0.5, -0.5),  
+        vec2f( 0.5, -0.5)   
+    );
+
+    var ourStruct = ourStructs[instanceIndex];
+
+    var vsOut: VSOutput;
+
+    vsOut.position = vec4f(pos[vertexIndex] * ourStruct.scale + ourStruct.offset, 0.0, 1.0);
+    vsOut.color = ourStruct.color;
+
+    return vsOut;
+}
+
 @fragment 
-fn fs_main() -> @location(0) vec4f {
-    return vec4f(ourStruct.color, 1.0);
+fn fs_main(vsOut: VSOutput) -> @location(0) vec4f {
+    return vec4f(vsOut.color, 1.0);
 }

@@ -8,7 +8,8 @@ use wgpu::{
 use winit::{dpi::PhysicalSize, window::Window};
 
 #[repr(C)]
-struct UniformData {
+#[derive(Debug)]
+struct BufferElementData {
     color: (f32, f32, f32),
     _layout_offset: u32,
     scale: (f32, f32),
@@ -21,7 +22,8 @@ pub struct GraphicsContext<'a> {
     surface: Surface<'a>,
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
-    uniform_bind_groups: Vec<BindGroup>,
+    bind_group: BindGroup,
+    number_of_elements: u64,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -78,33 +80,25 @@ impl<'a> GraphicsContext<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let uniform_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Bind group layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
+        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Bind group layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
 
-        let mut uniform_bind_groups = Vec::new();
+        let element_size = std::mem::size_of::<BufferElementData>() as u64;
+        let number_of_elements = 100_u64;
+        let mut buffer_data: Vec<BufferElementData> = Vec::new();
 
-        let size = std::mem::size_of::<UniformData>() as u64;
-
-        for _ in 0..100 {
-            let uniform_buffer = device.create_buffer(&BufferDescriptor {
-                label: Some("Uniform buffer descriptor"),
-                size,
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-
+        for _ in 0..number_of_elements {
             let r = rand::random::<f32>();
             let g = rand::random::<f32>();
             let b = rand::random::<f32>();
@@ -115,37 +109,46 @@ impl<'a> GraphicsContext<'a> {
             let offset_x = (rand::random::<f32>() - 0.5) * 2.0;
             let offset_y = (rand::random::<f32>() - 0.5) * 2.0;
 
-            let buffer_data = UniformData {
+            let element = BufferElementData {
                 color: (r, g, b),
                 _layout_offset: 0,
                 scale: (scale_x, scale_y),
                 offset: (offset_x, offset_y),
             };
 
-            let buffer_data = unsafe {
-                std::slice::from_raw_parts(
-                    &buffer_data as *const UniformData as *const u8,
-                    std::mem::size_of::<UniformData>(),
-                )
-            };
-
-            queue.write_buffer(&uniform_buffer, 0, buffer_data);
-
-            let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
-                label: Some("Bind group"),
-                layout: &uniform_bind_group_layout,
-                entries: &[BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                }],
-            });
-
-            uniform_bind_groups.push(uniform_bind_group);
+            buffer_data.push(element);
         }
+
+        let buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                buffer_data.as_slice() as *const [BufferElementData] as *const u8,
+                (element_size * number_of_elements) as usize,
+            )
+        };
+
+        println!("Buffer data len: {:#?}", buffer_data.len());
+
+        let storage_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Storage buffer"),
+            size: element_size * number_of_elements,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&storage_buffer, 0, buffer_data);
+
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Bind group"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: storage_buffer.as_entire_binding(),
+            }],
+        });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[&uniform_bind_group_layout],
+            bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -190,9 +193,8 @@ impl<'a> GraphicsContext<'a> {
             surface,
             config,
             render_pipeline,
-            // uniform_buffer,
-            uniform_bind_groups,
-            // uniform_bind_group_layout,
+            bind_group,
+            number_of_elements,
         }
     }
 
@@ -239,10 +241,8 @@ impl<'a> GraphicsContext<'a> {
 
         render_pass.set_pipeline(&self.render_pipeline);
 
-        for uniform_bind_group in &self.uniform_bind_groups {
-            render_pass.set_bind_group(0, uniform_bind_group, &[]);
-            render_pass.draw(0..3, 0..1);
-        }
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.draw(0..3, 0..(self.number_of_elements as u32));
 
         drop(render_pass);
         let encoder = encoder.finish();
