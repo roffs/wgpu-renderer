@@ -1,5 +1,7 @@
+use cgmath::{Deg, Matrix};
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
     DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits,
     MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
     RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
@@ -17,6 +19,7 @@ pub struct GraphicsContext<'a> {
     render_pipeline: RenderPipeline,
     mesh: Mesh,
     texture: Texture,
+    model_bind_group: BindGroup,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -63,9 +66,53 @@ impl<'a> GraphicsContext<'a> {
             Some("Test texture"),
         );
 
+        let model_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Model bind group layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let model_translation =
+            cgmath::Matrix4::from_translation(cgmath::Vector3::<f32>::new(0.2, 0.0, 0.0));
+        let model_rotation = cgmath::Matrix4::<f32>::from_angle_z(Deg(15.0));
+        let model_scale = cgmath::Matrix4::<f32>::from_scale(0.5);
+
+        let model_buffer_data = model_translation * model_rotation * model_scale;
+
+        let model_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let model_buffer_data = unsafe {
+            std::slice::from_raw_parts(model_buffer_data.as_ptr() as *const u8, model_buffer_size)
+        };
+
+        let model_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Model buffer"),
+            size: model_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&model_buffer, 0, model_buffer_data);
+
+        let model_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Model bind group"),
+            layout: &model_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: model_buffer.as_entire_binding(),
+            }],
+        });
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[&texture_bind_group_layout],
+            bind_group_layouts: &[&model_bind_group_layout, &texture_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -112,6 +159,7 @@ impl<'a> GraphicsContext<'a> {
             render_pipeline,
             mesh,
             texture,
+            model_bind_group,
         }
     }
 
@@ -159,7 +207,8 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.set_bind_group(0, &self.texture, &[]);
+        render_pass.set_bind_group(0, &self.model_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.texture, &[]);
         render_pass.draw_indexed(0..6, 0, 0..1);
 
         drop(render_pass);
