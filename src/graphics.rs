@@ -1,4 +1,4 @@
-use cgmath::{Deg, Matrix};
+use cgmath::{Deg, Matrix, Matrix4};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
@@ -9,7 +9,7 @@ use wgpu::{
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{mesh::Mesh, texture::Texture, vertex::Vertex};
+use crate::{camera::Camera, mesh::Mesh, texture::Texture, vertex::Vertex};
 
 pub struct GraphicsContext<'a> {
     device: Device,
@@ -20,10 +20,11 @@ pub struct GraphicsContext<'a> {
     mesh: Mesh,
     texture: Texture,
     model_bind_group: BindGroup,
+    camera_bind_group: BindGroup,
 }
 
 impl<'a> GraphicsContext<'a> {
-    pub fn new(window: &'a Window) -> GraphicsContext<'a> {
+    pub fn new(window: &'a Window, camera: &Camera) -> GraphicsContext<'a> {
         let (device, queue, config, surface) = create_graphics_context(window);
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -66,6 +67,8 @@ impl<'a> GraphicsContext<'a> {
             Some("Test texture"),
         );
 
+        // MODEL
+
         let model_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Model bind group layout"),
             entries: &[BindGroupLayoutEntry {
@@ -94,7 +97,7 @@ impl<'a> GraphicsContext<'a> {
 
         let model_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model buffer"),
-            size: model_buffer_size as u64,
+            size: std::mem::size_of::<Matrix4<f32>>() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -110,9 +113,92 @@ impl<'a> GraphicsContext<'a> {
             }],
         });
 
+        // CAMERA
+
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Model bind group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX,
+                        ty: BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX,
+                        ty: BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let view_buffer_data = camera.get_view();
+        let view_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let view_buffer_data = unsafe {
+            std::slice::from_raw_parts(view_buffer_data.as_ptr() as *const u8, view_buffer_size)
+        };
+
+        let view_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("View buffer"),
+            size: view_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&view_buffer, 0, view_buffer_data);
+
+        let projection_buffer_data = camera.get_projection();
+        let projection_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let projection_buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                projection_buffer_data.as_ptr() as *const u8,
+                projection_buffer_size,
+            )
+        };
+
+        let projection_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Projection buffer"),
+            size: projection_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&projection_buffer, 0, projection_buffer_data);
+
+        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Camera bind group"),
+            layout: &camera_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: view_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: projection_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // PIPELINE
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[&model_bind_group_layout, &texture_bind_group_layout],
+            bind_group_layouts: &[
+                &model_bind_group_layout,
+                &camera_bind_group_layout,
+                &texture_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -160,6 +246,7 @@ impl<'a> GraphicsContext<'a> {
             mesh,
             texture,
             model_bind_group,
+            camera_bind_group,
         }
     }
 
@@ -208,7 +295,8 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.model_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.texture, &[]);
+        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(2, &self.texture, &[]);
         render_pass.draw_indexed(0..6, 0, 0..1);
 
         drop(render_pass);

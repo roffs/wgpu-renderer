@@ -15,6 +15,8 @@ struct VSOut {
     @location(0) uv: vec2f,
 }
 @group(0) @binding(0) var<uniform> model: mat4x4f;
+@group(1) @binding(0) var<uniform> view: mat4x4f;
+@group(1) @binding(1) var<uniform> projection: mat4x4f;
 
 @vertex 
 fn vs_main(
@@ -23,15 +25,15 @@ fn vs_main(
 
     var vsout: VSOut;
 
-    vsout.position = model * vec4f(vertex.position, 0.0, 1.0);
+    vsout.position = projection * view * model * vec4f(vertex.position, 0.0, 1.0);
     vsout.uv = vertex.uv;
     
     return vsout;
 }
 
 
-@group(1) @binding(0) var ourSampler: sampler;
-@group(1) @binding(1) var ourTexture: texture_2d<f32>;
+@group(2) @binding(0) var ourSampler: sampler;
+@group(2) @binding(1) var ourTexture: texture_2d<f32>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {

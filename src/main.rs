@@ -1,8 +1,11 @@
+mod camera;
 mod graphics;
 mod mesh;
 mod texture;
 mod vertex;
 
+use camera::Camera;
+use cgmath::Deg;
 use graphics::GraphicsContext;
 use winit::{
     event::{Event, KeyEvent, WindowEvent},
@@ -18,7 +21,17 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let mut graphics_context = GraphicsContext::new(&window);
+    let camera = Camera::new(
+        (0.0, 0.0, 3.0),
+        Deg(-90.0),
+        Deg(0.0),
+        45.0,
+        window.inner_size().width as f32 / window.inner_size().height as f32,
+        0.01,
+        100.0,
+    );
+
+    let mut graphics_context = GraphicsContext::new(&window, &camera);
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
