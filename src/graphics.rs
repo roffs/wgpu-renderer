@@ -1,14 +1,13 @@
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer as WGPUBuffer, BufferDescriptor, BufferUsages,
-    CompositeAlphaMode, Device, DeviceDescriptor, Features, FragmentState, IndexFormat, Instance,
-    InstanceDescriptor, Limits, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue,
-    RenderPipeline, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface,
-    SurfaceConfiguration, TextureUsages, VertexState,
+    BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device, DeviceDescriptor, Features,
+    FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState,
+    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline, RequestAdapterOptions,
+    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{texture::Texture, vertex::Vertex};
+use crate::{mesh::Mesh, texture::Texture, vertex::Vertex};
 
 pub struct GraphicsContext<'a> {
     device: Device,
@@ -16,8 +15,7 @@ pub struct GraphicsContext<'a> {
     surface: Surface<'a>,
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
-    vertex_buffer: WGPUBuffer,
-    index_buffer: WGPUBuffer,
+    mesh: Mesh,
     texture_bind_group: BindGroup,
 }
 
@@ -30,52 +28,7 @@ impl<'a> GraphicsContext<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        // VERTEX BUFFER
-        let vertex_buffer_data = &[
-            Vertex::new((-0.5, -0.5), (0.0, 0.0)),
-            Vertex::new((0.5, -0.5), (1.0, 0.0)),
-            Vertex::new((0.5, 0.5), (1.0, 1.0)),
-            Vertex::new((-0.5, 0.5), (0.0, 1.0)),
-        ];
-
-        let vertex_buffer_size = std::mem::size_of_val(vertex_buffer_data);
-        let vertex_buffer_data = unsafe {
-            std::slice::from_raw_parts(
-                vertex_buffer_data as *const [Vertex] as *const u8,
-                vertex_buffer_size,
-            )
-        };
-
-        let vertex_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Vertex buffer"),
-            size: vertex_buffer_size as u64,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        queue.write_buffer(&vertex_buffer, 0, vertex_buffer_data);
-
-        // INDEX BUFFER
-
-        let index_buffer_data: &[u16] = &[0, 1, 2, 0, 2, 3];
-
-        let index_buffer_size = std::mem::size_of_val(index_buffer_data);
-
-        let index_buffer_data = unsafe {
-            std::slice::from_raw_parts(
-                index_buffer_data as *const [u16] as *const u8,
-                index_buffer_size,
-            )
-        };
-
-        let index_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Index buffer"),
-            size: index_buffer_size as u64,
-            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        queue.write_buffer(&index_buffer, 0, index_buffer_data);
+        let mesh = Mesh::new(&device, &queue);
 
         // TEXTURE
 
@@ -166,8 +119,7 @@ impl<'a> GraphicsContext<'a> {
             surface,
             config,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
+            mesh,
             texture_bind_group,
         }
     }
@@ -214,8 +166,8 @@ impl<'a> GraphicsContext<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+        render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..6, 0, 0..1);
 
