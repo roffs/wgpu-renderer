@@ -1,6 +1,6 @@
 use cgmath::{Deg, Matrix, Matrix4};
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
     DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits,
     MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
@@ -20,11 +20,11 @@ pub struct GraphicsContext<'a> {
     mesh: Mesh,
     texture: Texture,
     model_bind_group: BindGroup,
-    camera_bind_group: BindGroup,
+    camera_bind_group_layout: BindGroupLayout,
 }
 
 impl<'a> GraphicsContext<'a> {
-    pub fn new(window: &'a Window, camera: &Camera) -> GraphicsContext<'a> {
+    pub fn new(window: &'a Window) -> GraphicsContext<'a> {
         let (device, queue, config, surface) = create_graphics_context(window);
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -142,54 +142,6 @@ impl<'a> GraphicsContext<'a> {
                 ],
             });
 
-        let view_buffer_data = camera.get_view();
-        let view_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let view_buffer_data = unsafe {
-            std::slice::from_raw_parts(view_buffer_data.as_ptr() as *const u8, view_buffer_size)
-        };
-
-        let view_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("View buffer"),
-            size: view_buffer_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        queue.write_buffer(&view_buffer, 0, view_buffer_data);
-
-        let projection_buffer_data = camera.get_projection();
-        let projection_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let projection_buffer_data = unsafe {
-            std::slice::from_raw_parts(
-                projection_buffer_data.as_ptr() as *const u8,
-                projection_buffer_size,
-            )
-        };
-
-        let projection_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Projection buffer"),
-            size: projection_buffer_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        queue.write_buffer(&projection_buffer, 0, projection_buffer_data);
-
-        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Camera bind group"),
-            layout: &camera_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: view_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: projection_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
         // PIPELINE
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -246,7 +198,7 @@ impl<'a> GraphicsContext<'a> {
             mesh,
             texture,
             model_bind_group,
-            camera_bind_group,
+            camera_bind_group_layout,
         }
     }
 
@@ -259,7 +211,55 @@ impl<'a> GraphicsContext<'a> {
         self.surface.configure(&self.device, &self.config);
     }
 
-    pub fn render(&self) {
+    pub fn render(&self, camera: &Camera) {
+        let view_buffer_data = camera.get_view();
+        let view_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let view_buffer_data = unsafe {
+            std::slice::from_raw_parts(view_buffer_data.as_ptr() as *const u8, view_buffer_size)
+        };
+
+        let view_buffer = self.device.create_buffer(&BufferDescriptor {
+            label: Some("View buffer"),
+            size: view_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.queue.write_buffer(&view_buffer, 0, view_buffer_data);
+
+        let projection_buffer_data = camera.get_projection();
+        let projection_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let projection_buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                projection_buffer_data.as_ptr() as *const u8,
+                projection_buffer_size,
+            )
+        };
+
+        let projection_buffer = self.device.create_buffer(&BufferDescriptor {
+            label: Some("Projection buffer"),
+            size: projection_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.queue
+            .write_buffer(&projection_buffer, 0, projection_buffer_data);
+
+        let camera_bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Camera bind group"),
+            layout: &self.camera_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: view_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: projection_buffer.as_entire_binding(),
+                },
+            ],
+        });
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture
@@ -295,7 +295,7 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.model_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(1, &camera_bind_group, &[]);
         render_pass.set_bind_group(2, &self.texture, &[]);
         render_pass.draw_indexed(0..6, 0, 0..1);
 
