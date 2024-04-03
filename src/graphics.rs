@@ -1,10 +1,10 @@
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferDescriptor, BufferUsages, CompositeAlphaMode,
-    Device, DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor,
-    Limits, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
-    RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
-    TextureUsages, VertexAttribute, VertexBufferLayout, VertexState,
+    BindGroupLayoutEntry, BindingType, Buffer as WGPUBuffer, BufferDescriptor, BufferUsages,
+    CompositeAlphaMode, Device, DeviceDescriptor, Features, FragmentState, IndexFormat, Instance,
+    InstanceDescriptor, Limits, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue,
+    RenderPipeline, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface,
+    SurfaceConfiguration, TextureUsages, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -16,59 +16,14 @@ pub struct GraphicsContext<'a> {
     surface: Surface<'a>,
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
-    vertex_buffer: Buffer,
-    index_buffer: Buffer,
+    vertex_buffer: WGPUBuffer,
+    index_buffer: WGPUBuffer,
     texture_bind_group: BindGroup,
 }
 
 impl<'a> GraphicsContext<'a> {
     pub fn new(window: &'a Window) -> GraphicsContext<'a> {
-        let instance = Instance::new(InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let surface = instance.create_surface(window).unwrap();
-
-        let adapter = pollster::block_on(async {
-            instance
-                .request_adapter(&RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::HighPerformance,
-                    compatible_surface: Some(&surface),
-                    force_fallback_adapter: false,
-                })
-                .await
-        })
-        .unwrap();
-
-        let (device, queue) = pollster::block_on(async {
-            adapter
-                .request_device(
-                    &DeviceDescriptor {
-                        label: Some("Device"),
-                        required_features: Features::empty(),
-                        required_limits: Limits::default(),
-                    },
-                    None,
-                )
-                .await
-        })
-        .unwrap();
-
-        let size = window.inner_size();
-
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
-            desired_maximum_frame_latency: 2,
-            alpha_mode: CompositeAlphaMode::Auto,
-            view_formats: vec![],
-        };
-
-        surface.configure(&device, &config);
+        let (device, queue, config, surface) = create_graphics_context(window);
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -176,22 +131,7 @@ impl<'a> GraphicsContext<'a> {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[
-                        VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x2,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x2,
-                            offset: (std::mem::size_of::<f32>() * 2) as u64,
-                            shader_location: 1,
-                        },
-                    ],
-                }],
+                buffers: &[Vertex::desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -285,4 +225,55 @@ impl<'a> GraphicsContext<'a> {
         self.queue.submit(std::iter::once(encoder));
         output.present();
     }
+}
+
+fn create_graphics_context(window: &Window) -> (Device, Queue, SurfaceConfiguration, Surface) {
+    let instance = Instance::new(InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+
+    let surface = instance.create_surface(window).unwrap();
+
+    let adapter = pollster::block_on(async {
+        instance
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+    })
+    .unwrap();
+
+    let (device, queue) = pollster::block_on(async {
+        adapter
+            .request_device(
+                &DeviceDescriptor {
+                    label: Some("Device"),
+                    required_features: Features::empty(),
+                    required_limits: Limits::default(),
+                },
+                None,
+            )
+            .await
+    })
+    .unwrap();
+
+    let size = window.inner_size();
+
+    let config = SurfaceConfiguration {
+        usage: TextureUsages::RENDER_ATTACHMENT,
+        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        width: size.width,
+        height: size.height,
+        present_mode: wgpu::PresentMode::Fifo,
+        desired_maximum_frame_latency: 2,
+        alpha_mode: CompositeAlphaMode::Auto,
+        view_formats: vec![],
+    };
+
+    surface.configure(&device, &config);
+
+    (device, queue, config, surface)
 }
