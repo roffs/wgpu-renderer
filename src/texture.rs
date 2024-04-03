@@ -1,16 +1,23 @@
+use std::ops::Deref;
+
 use image::io::Reader;
 use wgpu::{
-    Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler,
-    TextureDescriptor, TextureView,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d,
+    ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, TextureDescriptor,
 };
 
 pub struct Texture {
-    pub view: TextureView,
-    pub sampler: Sampler,
+    bind_group: BindGroup,
 }
 
 impl Texture {
-    pub fn new(device: &Device, queue: &Queue, path: &str) -> Texture {
+    pub fn new(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        path: &str,
+        label: Option<&str>,
+    ) -> Texture {
         let image = Reader::open(path).unwrap().decode().unwrap().flipv();
 
         let texture_size = Extent3d {
@@ -20,7 +27,7 @@ impl Texture {
         };
 
         let texture = device.create_texture(&TextureDescriptor {
-            label: Some("Texture"),
+            label,
             size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
@@ -57,6 +64,29 @@ impl Texture {
             ..Default::default()
         });
 
-        Texture { sampler, view }
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+            ],
+        });
+
+        Texture { bind_group }
+    }
+}
+
+impl Deref for Texture {
+    type Target = BindGroup;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bind_group
     }
 }

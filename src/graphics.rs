@@ -1,9 +1,9 @@
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device, DeviceDescriptor, Features,
-    FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState,
-    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline, RequestAdapterOptions,
-    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages, VertexState,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
+    DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits,
+    MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
+    RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
+    TextureUsages, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -16,7 +16,7 @@ pub struct GraphicsContext<'a> {
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
     mesh: Mesh,
-    texture_bind_group: BindGroup,
+    texture: Texture,
 }
 
 impl<'a> GraphicsContext<'a> {
@@ -31,8 +31,6 @@ impl<'a> GraphicsContext<'a> {
         let mesh = Mesh::new(&device, &queue);
 
         // TEXTURE
-
-        let texture = Texture::new(&device, &queue, "./assets/textures/test.png");
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -57,20 +55,13 @@ impl<'a> GraphicsContext<'a> {
                 ],
             });
 
-        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
-                },
-            ],
-        });
+        let texture = Texture::new(
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+            "./assets/textures/test.png",
+            Some("Test texture"),
+        );
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
@@ -120,7 +111,7 @@ impl<'a> GraphicsContext<'a> {
             config,
             render_pipeline,
             mesh,
-            texture_bind_group,
+            texture,
         }
     }
 
@@ -168,7 +159,7 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.texture, &[]);
         render_pass.draw_indexed(0..6, 0, 0..1);
 
         drop(render_pass);
