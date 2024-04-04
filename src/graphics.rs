@@ -1,11 +1,12 @@
 use cgmath::{Deg, Matrix, Matrix4};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device,
-    DeviceDescriptor, Features, FragmentState, IndexFormat, Instance, InstanceDescriptor, Limits,
-    MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPipeline,
-    RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
-    TextureUsages, VertexState,
+    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode,
+    DepthBiasState, DepthStencilState, Device, DeviceDescriptor, Features, FragmentState,
+    IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState, Operations,
+    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
+    RenderPipeline, RequestAdapterOptions, SamplerBindingType, ShaderStages, StencilState, Surface,
+    SurfaceConfiguration, TextureUsages, VertexState,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -18,7 +19,8 @@ pub struct GraphicsContext<'a> {
     config: SurfaceConfiguration,
     render_pipeline: RenderPipeline,
     mesh: Mesh,
-    texture: Texture,
+    depth_texture: Texture,
+    texture_bind_group: BindGroup,
     model_bind_group: BindGroup,
     camera_bind_group_layout: BindGroupLayout,
 }
@@ -62,10 +64,24 @@ impl<'a> GraphicsContext<'a> {
         let texture = Texture::new(
             &device,
             &queue,
-            &texture_bind_group_layout,
             "./assets/textures/test.png",
             Some("Test texture"),
         );
+
+        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+            ],
+        });
 
         // MODEL
 
@@ -142,6 +158,12 @@ impl<'a> GraphicsContext<'a> {
                 ],
             });
 
+        // DEPTH TEXTURE
+        let size = window.inner_size();
+
+        let depth_texture =
+            Texture::new_depth_texture(&device, size.width, size.height, Some("Depth texture"));
+
         // PIPELINE
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -180,7 +202,13 @@ impl<'a> GraphicsContext<'a> {
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(DepthStencilState {
+                format: Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: StencilState::default(),
+                bias: DepthBiasState::default(),
+            }),
             multisample: MultisampleState {
                 count: 1,
                 mask: !0,
@@ -196,7 +224,8 @@ impl<'a> GraphicsContext<'a> {
             config,
             render_pipeline,
             mesh,
-            texture,
+            depth_texture,
+            texture_bind_group,
             model_bind_group,
             camera_bind_group_layout,
         }
@@ -286,7 +315,14 @@ impl<'a> GraphicsContext<'a> {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                view: &self.depth_texture.view,
+                depth_ops: Some(Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             occlusion_query_set: None,
             timestamp_writes: None,
         });
@@ -296,7 +332,7 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.model_bind_group, &[]);
         render_pass.set_bind_group(1, &camera_bind_group, &[]);
-        render_pass.set_bind_group(2, &self.texture, &[]);
+        render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..self.mesh.indices_len, 0, 0..1);
 
         drop(render_pass);
