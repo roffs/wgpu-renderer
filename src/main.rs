@@ -2,15 +2,20 @@ mod camera;
 mod mesh;
 mod renderer;
 mod texture;
+mod transform;
 mod vertex;
 
 use camera::{Camera, CameraController, CameraDescriptor};
-use cgmath::{Deg, Vector3, Zero};
+use cgmath::{Deg, Matrix, Matrix4, Vector3, Zero};
+use mesh::Mesh;
 use renderer::Renderer;
+use texture::Texture;
+use transform::Transform;
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
-    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
-    ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device, DeviceDescriptor,
+    Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
+    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -39,6 +44,7 @@ fn main() {
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
 
+    // CAMERA
     let camera_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: Some("Model bind group layout"),
         entries: &[BindGroupLayoutEntry {
@@ -52,6 +58,7 @@ fn main() {
             count: None,
         }],
     });
+
     let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
         &device,
@@ -68,12 +75,100 @@ fn main() {
         },
     );
 
+    // MESH
+
+    let mesh = Mesh::cube(&device, &queue);
+
+    // MODEL TRANSFORM MATRIX
+
+    let model_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Model bind group layout"),
+        entries: &[BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::VERTEX,
+            ty: BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+
+    // MODEL
+
+    let model_matrix = Transform::new(
+        &device,
+        &queue,
+        &model_bind_group_layout,
+        (0.0, 0.0, 0.0),
+        1.0,
+    );
+
+    let model_matrix_2 = Transform::new(
+        &device,
+        &queue,
+        &model_bind_group_layout,
+        (1.5, 0.0, 0.0),
+        0.5,
+    );
+
+    // TEXTURE
+
+    let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Texture bind group layout"),
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+        ],
+    });
+
+    let texture = Texture::new(
+        &device,
+        &queue,
+        "./assets/textures/test.png",
+        Some("Test texture"),
+    );
+
+    let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        label: Some("Texture bind group"),
+        layout: &texture_bind_group_layout,
+        entries: &[
+            BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Sampler(&texture.sampler),
+            },
+            BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&texture.view),
+            },
+        ],
+    });
+
     let mut renderer = Renderer::new(
         &device,
         &queue,
         &surface,
         &mut config,
-        &camera_bind_group_layout,
+        &[
+            &camera_bind_group_layout,
+            &model_bind_group_layout,
+            &texture_bind_group_layout,
+        ],
     );
 
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -128,7 +223,9 @@ fn main() {
                     camera_delta_pitch = 0.0;
                     camera_delta_yaw = 0.0;
 
-                    renderer.render(&camera);
+                    let objects = [(&mesh, &model_matrix), (&mesh, &model_matrix_2)];
+
+                    renderer.render(&objects, &texture_bind_group, &camera);
                 }
                 WindowEvent::Resized(size) => {
                     renderer.resize(size.width, size.height);

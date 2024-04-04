@@ -1,14 +1,11 @@
-use cgmath::{Deg, Matrix, Matrix4};
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, DepthBiasState,
-    DepthStencilState, Device, FragmentState, IndexFormat, MultisampleState, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
-    RenderPipeline, SamplerBindingType, ShaderStages, StencilState, Surface, SurfaceConfiguration,
+    BindGroup, BindGroupLayout, DepthBiasState, DepthStencilState, Device, FragmentState,
+    IndexFormat, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState, Queue,
+    RenderPassDepthStencilAttachment, RenderPipeline, StencilState, Surface, SurfaceConfiguration,
     VertexState,
 };
 
-use crate::{camera::Camera, mesh::Mesh, texture::Texture, vertex::Vertex};
+use crate::{camera::Camera, mesh::Mesh, texture::Texture, transform::Transform, vertex::Vertex};
 
 pub struct Renderer<'a> {
     device: &'a Device,
@@ -16,10 +13,7 @@ pub struct Renderer<'a> {
     surface: &'a Surface<'a>,
     config: &'a mut SurfaceConfiguration,
     render_pipeline: RenderPipeline,
-    mesh: Mesh,
     depth_texture: Texture,
-    texture_bind_group: BindGroup,
-    model_bind_group: BindGroup,
 }
 
 impl<'a> Renderer<'a> {
@@ -28,106 +22,11 @@ impl<'a> Renderer<'a> {
         queue: &'a Queue,
         surface: &'a Surface,
         config: &'a mut SurfaceConfiguration,
-        camera_bind_group_layout: &BindGroupLayout,
+        bind_group_layouts: &[&BindGroupLayout],
     ) -> Renderer<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
-        });
-
-        let mesh = Mesh::cube(device, queue);
-
-        // TEXTURE
-
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Texture bind group layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let texture = Texture::new(
-            device,
-            queue,
-            "./assets/textures/test.png",
-            Some("Test texture"),
-        );
-
-        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
-                },
-            ],
-        });
-
-        // MODEL
-
-        let model_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Model bind group layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX,
-                ty: BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let model_translation =
-            cgmath::Matrix4::from_translation(cgmath::Vector3::<f32>::new(0.2, 0.0, 0.0));
-        let model_rotation = cgmath::Matrix4::<f32>::from_angle_z(Deg(15.0));
-        let model_scale = cgmath::Matrix4::<f32>::from_scale(0.5);
-
-        let model_buffer_data = model_translation * model_rotation * model_scale;
-
-        let model_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let model_buffer_data = unsafe {
-            std::slice::from_raw_parts(model_buffer_data.as_ptr() as *const u8, model_buffer_size)
-        };
-
-        let model_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Model buffer"),
-            size: std::mem::size_of::<Matrix4<f32>>() as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        queue.write_buffer(&model_buffer, 0, model_buffer_data);
-
-        let model_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Model bind group"),
-            layout: &model_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: model_buffer.as_entire_binding(),
-            }],
         });
 
         // DEPTH TEXTURE
@@ -135,14 +34,9 @@ impl<'a> Renderer<'a> {
             Texture::new_depth_texture(device, config.width, config.height, Some("Depth texture"));
 
         // PIPELINE
-
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[
-                &camera_bind_group_layout,
-                &model_bind_group_layout,
-                &texture_bind_group_layout,
-            ],
+            bind_group_layouts,
             push_constant_ranges: &[],
         });
 
@@ -193,10 +87,7 @@ impl<'a> Renderer<'a> {
             surface,
             config,
             render_pipeline,
-            mesh,
             depth_texture,
-            texture_bind_group,
-            model_bind_group,
         }
     }
 
@@ -216,7 +107,12 @@ impl<'a> Renderer<'a> {
         self.surface.configure(self.device, self.config);
     }
 
-    pub fn render(&self, camera: &Camera) {
+    pub fn render(
+        &self,
+        objects: &[(&Mesh, &Transform)],
+        texture_bind_group: &BindGroup,
+        camera: &Camera,
+    ) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture
@@ -256,12 +152,15 @@ impl<'a> Renderer<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.model_bind_group, &[]);
-        render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
-        render_pass.draw_indexed(0..self.mesh.indices_len, 0, 0..1);
+
+        for (mesh, transform) in objects {
+            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
+            render_pass.set_bind_group(1, transform, &[]);
+            render_pass.set_bind_group(2, texture_bind_group, &[]);
+            render_pass.draw_indexed(0..mesh.indices_len, 0, 0..1);
+        }
 
         drop(render_pass);
         let encoder = encoder.finish();
