@@ -32,7 +32,7 @@ impl<'a> GraphicsContext<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let mesh = Mesh::new(&device, &queue);
+        let mesh = Mesh::cube(&device, &queue);
 
         // TEXTURE
 
@@ -297,7 +297,7 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_bind_group(0, &self.model_bind_group, &[]);
         render_pass.set_bind_group(1, &camera_bind_group, &[]);
         render_pass.set_bind_group(2, &self.texture, &[]);
-        render_pass.draw_indexed(0..6, 0, 0..1);
+        render_pass.draw_indexed(0..self.mesh.indices_len, 0, 0..1);
 
         drop(render_pass);
         let encoder = encoder.finish();

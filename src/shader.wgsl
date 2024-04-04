@@ -6,7 +6,7 @@ struct OurStruct {
 };
 
 struct Vertex {
-    @location(0) position: vec2f,
+    @location(0) position: vec3f,
     @location(1) uv: vec2f,
 }
 
@@ -25,7 +25,7 @@ fn vs_main(
 
     var vsout: VSOut;
 
-    vsout.position = projection * view * model * vec4f(vertex.position, 0.0, 1.0);
+    vsout.position = projection * view * model * vec4f(vertex.position, 1.0);
     vsout.uv = vertex.uv;
     
     return vsout;

@@ -2,12 +2,12 @@ use wgpu::{VertexAttribute, VertexBufferLayout};
 
 #[repr(C)]
 pub struct Vertex {
-    position: (f32, f32),
+    position: (f32, f32, f32),
     uv: (f32, f32),
 }
 
 impl<'a> Vertex {
-    pub fn new(position: (f32, f32), uv: (f32, f32)) -> Vertex {
+    pub fn new(position: (f32, f32, f32), uv: (f32, f32)) -> Vertex {
         Vertex { position, uv }
     }
 
@@ -17,13 +17,13 @@ impl<'a> Vertex {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x2,
+                    format: wgpu::VertexFormat::Float32x3,
                     offset: 0,
                     shader_location: 0,
                 },
                 VertexAttribute {
                     format: wgpu::VertexFormat::Float32x2,
-                    offset: (std::mem::size_of::<f32>() * 2) as u64,
+                    offset: (std::mem::size_of::<f32>() * 3) as u64,
                     shader_location: 1,
                 },
             ],
