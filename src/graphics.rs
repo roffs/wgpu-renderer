@@ -169,8 +169,8 @@ impl<'a> GraphicsContext<'a> {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[
-                &model_bind_group_layout,
                 &camera_bind_group_layout,
+                &model_bind_group_layout,
                 &texture_bind_group_layout,
             ],
             push_constant_ranges: &[],
@@ -330,8 +330,8 @@ impl<'a> GraphicsContext<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.set_bind_group(0, &self.model_bind_group, &[]);
-        render_pass.set_bind_group(1, &camera_bind_group, &[]);
+        render_pass.set_bind_group(0, &camera_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.model_bind_group, &[]);
         render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..self.mesh.indices_len, 0, 0..1);
 

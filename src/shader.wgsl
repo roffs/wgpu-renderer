@@ -14,9 +14,9 @@ struct VSOut {
     @builtin(position) position: vec4f, 
     @location(0) uv: vec2f,
 }
-@group(0) @binding(0) var<uniform> model: mat4x4f;
-@group(1) @binding(0) var<uniform> view: mat4x4f;
-@group(1) @binding(1) var<uniform> projection: mat4x4f;
+@group(0) @binding(1) var<uniform> projection: mat4x4f;
+@group(0) @binding(0) var<uniform> view: mat4x4f;
+@group(1) @binding(0) var<uniform> model: mat4x4f;
 
 @vertex 
 fn vs_main(
