@@ -38,7 +38,7 @@ fn main() {
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
 
-    let mut graphics_context = Renderer::new(&device, &queue, &surface, &mut config);
+    let mut renderer = Renderer::new(&device, &queue, &surface, &mut config);
 
     let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
@@ -103,10 +103,11 @@ fn main() {
                     camera_delta_pitch = 0.0;
                     camera_delta_yaw = 0.0;
 
-                    graphics_context.render(&camera);
+                    renderer.render(&camera);
                 }
                 WindowEvent::Resized(size) => {
-                    graphics_context.resize(size.width, size.height);
+                    renderer.resize(size.width, size.height);
+                    camera.update_aspect(size.width as f32 / size.height as f32);
                 }
                 _ => {}
             },

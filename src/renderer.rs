@@ -236,6 +236,13 @@ impl<'a> Renderer<'a> {
             self.config.height = height;
         }
 
+        self.depth_texture = Texture::new_depth_texture(
+            self.device,
+            self.config.width,
+            self.config.height,
+            Some("Depth texture"),
+        );
+
         self.surface.configure(self.device, self.config);
     }
 

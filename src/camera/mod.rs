@@ -66,6 +66,10 @@ impl Camera {
         perspective(Deg(self.fovy), self.aspect, self.near, self.far)
     }
 
+    pub fn update_aspect(&mut self, aspect: f32) {
+        self.aspect = aspect;
+    }
+
     pub(self) fn update_directions(&mut self) {
         let (look_dir, up, right, forward) = calculate_local_directions(self.yaw, self.pitch);
 
