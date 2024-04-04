@@ -1,22 +1,20 @@
 use cgmath::{Deg, Matrix, Matrix4};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode,
-    DepthBiasState, DepthStencilState, Device, DeviceDescriptor, Features, FragmentState,
-    IndexFormat, Instance, InstanceDescriptor, Limits, MultisampleState, Operations,
+    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, DepthBiasState,
+    DepthStencilState, Device, FragmentState, IndexFormat, MultisampleState, Operations,
     PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
-    RenderPipeline, RequestAdapterOptions, SamplerBindingType, ShaderStages, StencilState, Surface,
-    SurfaceConfiguration, TextureUsages, VertexState,
+    RenderPipeline, SamplerBindingType, ShaderStages, StencilState, Surface, SurfaceConfiguration,
+    VertexState,
 };
-use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{camera::Camera, mesh::Mesh, texture::Texture, vertex::Vertex};
 
-pub struct GraphicsContext<'a> {
-    device: Device,
-    queue: Queue,
-    surface: Surface<'a>,
-    config: SurfaceConfiguration,
+pub struct Renderer<'a> {
+    device: &'a Device,
+    queue: &'a Queue,
+    surface: &'a Surface<'a>,
+    config: &'a mut SurfaceConfiguration,
     render_pipeline: RenderPipeline,
     mesh: Mesh,
     depth_texture: Texture,
@@ -25,16 +23,19 @@ pub struct GraphicsContext<'a> {
     camera_bind_group_layout: BindGroupLayout,
 }
 
-impl<'a> GraphicsContext<'a> {
-    pub fn new(window: &'a Window) -> GraphicsContext<'a> {
-        let (device, queue, config, surface) = create_graphics_context(window);
-
+impl<'a> Renderer<'a> {
+    pub fn new(
+        device: &'a Device,
+        queue: &'a Queue,
+        surface: &'a Surface,
+        config: &'a mut SurfaceConfiguration,
+    ) -> Renderer<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let mesh = Mesh::cube(&device, &queue);
+        let mesh = Mesh::cube(device, queue);
 
         // TEXTURE
 
@@ -62,8 +63,8 @@ impl<'a> GraphicsContext<'a> {
             });
 
         let texture = Texture::new(
-            &device,
-            &queue,
+            device,
+            queue,
             "./assets/textures/test.png",
             Some("Test texture"),
         );
@@ -159,10 +160,8 @@ impl<'a> GraphicsContext<'a> {
             });
 
         // DEPTH TEXTURE
-        let size = window.inner_size();
-
         let depth_texture =
-            Texture::new_depth_texture(&device, size.width, size.height, Some("Depth texture"));
+            Texture::new_depth_texture(device, config.width, config.height, Some("Depth texture"));
 
         // PIPELINE
 
@@ -217,7 +216,7 @@ impl<'a> GraphicsContext<'a> {
             multiview: None,
         });
 
-        GraphicsContext {
+        Renderer {
             device,
             queue,
             surface,
@@ -231,13 +230,13 @@ impl<'a> GraphicsContext<'a> {
         }
     }
 
-    pub fn resize(&mut self, &PhysicalSize { width, height }: &PhysicalSize<u32>) {
+    pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
             self.config.width = width;
             self.config.height = height;
         }
 
-        self.surface.configure(&self.device, &self.config);
+        self.surface.configure(self.device, self.config);
     }
 
     pub fn render(&self, camera: &Camera) {
@@ -341,55 +340,4 @@ impl<'a> GraphicsContext<'a> {
         self.queue.submit(std::iter::once(encoder));
         output.present();
     }
-}
-
-fn create_graphics_context(window: &Window) -> (Device, Queue, SurfaceConfiguration, Surface) {
-    let instance = Instance::new(InstanceDescriptor {
-        backends: wgpu::Backends::all(),
-        ..Default::default()
-    });
-
-    let surface = instance.create_surface(window).unwrap();
-
-    let adapter = pollster::block_on(async {
-        instance
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
-            .await
-    })
-    .unwrap();
-
-    let (device, queue) = pollster::block_on(async {
-        adapter
-            .request_device(
-                &DeviceDescriptor {
-                    label: Some("Device"),
-                    required_features: Features::empty(),
-                    required_limits: Limits::default(),
-                },
-                None,
-            )
-            .await
-    })
-    .unwrap();
-
-    let size = window.inner_size();
-
-    let config = SurfaceConfiguration {
-        usage: TextureUsages::RENDER_ATTACHMENT,
-        format: wgpu::TextureFormat::Bgra8UnormSrgb,
-        width: size.width,
-        height: size.height,
-        present_mode: wgpu::PresentMode::Fifo,
-        desired_maximum_frame_latency: 2,
-        alpha_mode: CompositeAlphaMode::Auto,
-        view_formats: vec![],
-    };
-
-    surface.configure(&device, &config);
-
-    (device, queue, config, surface)
 }

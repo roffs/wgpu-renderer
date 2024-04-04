@@ -1,18 +1,22 @@
 mod camera;
-mod graphics;
 mod mesh;
+mod renderer;
 mod texture;
 mod vertex;
 
 use camera::{Camera, CameraController};
 use cgmath::{Deg, Vector3, Zero};
-use graphics::GraphicsContext;
+use renderer::Renderer;
+use wgpu::{
+    CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
+    Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
+};
 use winit::{
     dpi::PhysicalSize,
     event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 
 fn main() {
@@ -32,7 +36,9 @@ fn main() {
 
     window.set_cursor_visible(false);
 
-    let mut graphics_context = GraphicsContext::new(&window);
+    let (device, queue, mut config, surface) = create_graphics_context(&window);
+
+    let mut graphics_context = Renderer::new(&device, &queue, &surface, &mut config);
 
     let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
@@ -100,7 +106,7 @@ fn main() {
                     graphics_context.render(&camera);
                 }
                 WindowEvent::Resized(size) => {
-                    graphics_context.resize(size);
+                    graphics_context.resize(size.width, size.height);
                 }
                 _ => {}
             },
@@ -115,4 +121,55 @@ fn main() {
             _ => {}
         })
         .unwrap();
+}
+
+fn create_graphics_context(window: &Window) -> (Device, Queue, SurfaceConfiguration, Surface) {
+    let instance = Instance::new(InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+
+    let surface = instance.create_surface(window).unwrap();
+
+    let adapter = pollster::block_on(async {
+        instance
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+    })
+    .unwrap();
+
+    let (device, queue) = pollster::block_on(async {
+        adapter
+            .request_device(
+                &DeviceDescriptor {
+                    label: Some("Device"),
+                    required_features: Features::empty(),
+                    required_limits: Limits::default(),
+                },
+                None,
+            )
+            .await
+    })
+    .unwrap();
+
+    let size = window.inner_size();
+
+    let config = SurfaceConfiguration {
+        usage: TextureUsages::RENDER_ATTACHMENT,
+        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        width: size.width,
+        height: size.height,
+        present_mode: wgpu::PresentMode::Fifo,
+        desired_maximum_frame_latency: 2,
+        alpha_mode: CompositeAlphaMode::Auto,
+        view_formats: vec![],
+    };
+
+    surface.configure(&device, &config);
+
+    (device, queue, config, surface)
 }
