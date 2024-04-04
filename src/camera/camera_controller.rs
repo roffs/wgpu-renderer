@@ -1,4 +1,4 @@
-use cgmath::Deg;
+use cgmath::{Deg, InnerSpace, Vector3, Zero};
 
 use super::Camera;
 
@@ -16,9 +16,13 @@ impl CameraController {
     }
 
     pub fn translate(&self, camera: &mut Camera, local_direction: cgmath::Vector3<f32>) {
-        let direction = (camera.forward * local_direction.x)
+        let mut direction = (camera.forward * local_direction.x)
             + (camera.up * local_direction.y)
             + (camera.right * local_direction.z);
+
+        if direction != Vector3::zero() {
+            direction = direction.normalize();
+        }
         camera.position += direction * self.move_speed;
     }
 
