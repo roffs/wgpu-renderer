@@ -8,8 +8,9 @@ use camera::{Camera, CameraController};
 use cgmath::{Deg, Vector3, Zero};
 use renderer::Renderer;
 use wgpu::{
-    CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
-    Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
+    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
+    ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -38,10 +39,24 @@ fn main() {
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
 
-    let mut renderer = Renderer::new(&device, &queue, &surface, &mut config);
-
+    let camera_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Model bind group layout"),
+        entries: &[BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::VERTEX,
+            ty: BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
     let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
+        &device,
+        &queue,
+        &camera_bind_group_layout,
         (0.0, 0.0, 3.0),
         Deg(-90.0),
         Deg(0.0),
@@ -49,6 +64,14 @@ fn main() {
         window.inner_size().width as f32 / window.inner_size().height as f32,
         0.01,
         100.0,
+    );
+
+    let mut renderer = Renderer::new(
+        &device,
+        &queue,
+        &surface,
+        &mut config,
+        &camera_bind_group_layout,
     );
 
     event_loop.set_control_flow(ControlFlow::Poll);

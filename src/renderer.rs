@@ -20,7 +20,6 @@ pub struct Renderer<'a> {
     depth_texture: Texture,
     texture_bind_group: BindGroup,
     model_bind_group: BindGroup,
-    camera_bind_group_layout: BindGroupLayout,
 }
 
 impl<'a> Renderer<'a> {
@@ -29,6 +28,7 @@ impl<'a> Renderer<'a> {
         queue: &'a Queue,
         surface: &'a Surface,
         config: &'a mut SurfaceConfiguration,
+        camera_bind_group_layout: &BindGroupLayout,
     ) -> Renderer<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -130,35 +130,6 @@ impl<'a> Renderer<'a> {
             }],
         });
 
-        // CAMERA
-
-        let camera_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Model bind group layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::VERTEX,
-                        ty: BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::VERTEX,
-                        ty: BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
         // DEPTH TEXTURE
         let depth_texture =
             Texture::new_depth_texture(device, config.width, config.height, Some("Depth texture"));
@@ -226,7 +197,6 @@ impl<'a> Renderer<'a> {
             depth_texture,
             texture_bind_group,
             model_bind_group,
-            camera_bind_group_layout,
         }
     }
 
@@ -247,54 +217,6 @@ impl<'a> Renderer<'a> {
     }
 
     pub fn render(&self, camera: &Camera) {
-        let view_buffer_data = camera.get_view();
-        let view_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let view_buffer_data = unsafe {
-            std::slice::from_raw_parts(view_buffer_data.as_ptr() as *const u8, view_buffer_size)
-        };
-
-        let view_buffer = self.device.create_buffer(&BufferDescriptor {
-            label: Some("View buffer"),
-            size: view_buffer_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        self.queue.write_buffer(&view_buffer, 0, view_buffer_data);
-
-        let projection_buffer_data = camera.get_projection();
-        let projection_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let projection_buffer_data = unsafe {
-            std::slice::from_raw_parts(
-                projection_buffer_data.as_ptr() as *const u8,
-                projection_buffer_size,
-            )
-        };
-
-        let projection_buffer = self.device.create_buffer(&BufferDescriptor {
-            label: Some("Projection buffer"),
-            size: projection_buffer_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        self.queue
-            .write_buffer(&projection_buffer, 0, projection_buffer_data);
-
-        let camera_bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Camera bind group"),
-            layout: &self.camera_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: view_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: projection_buffer.as_entire_binding(),
-                },
-            ],
-        });
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture
@@ -336,7 +258,7 @@ impl<'a> Renderer<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.set_bind_group(0, &camera_bind_group, &[]);
+        render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
         render_pass.set_bind_group(1, &self.model_bind_group, &[]);
         render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..self.mesh.indices_len, 0, 0..1);

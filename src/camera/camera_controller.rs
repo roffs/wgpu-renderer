@@ -24,6 +24,7 @@ impl CameraController {
             direction = direction.normalize();
         }
         camera.position += direction * self.move_speed;
+        camera.update_buffer();
     }
 
     pub fn rotate(&self, camera: &mut Camera, delta: (f32, f32)) {
@@ -37,7 +38,7 @@ impl CameraController {
             angle if angle > Deg(90.0).into() => Deg(90.0).into(),
             angle => angle,
         };
-
         camera.update_directions();
+        camera.update_buffer();
     }
 }
