@@ -4,7 +4,7 @@ mod renderer;
 mod texture;
 mod vertex;
 
-use camera::{Camera, CameraController};
+use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3, Zero};
 use renderer::Renderer;
 use wgpu::{
@@ -57,13 +57,15 @@ fn main() {
         &device,
         &queue,
         &camera_bind_group_layout,
-        (0.0, 0.0, 3.0),
-        Deg(-90.0),
-        Deg(0.0),
-        45.0,
-        window.inner_size().width as f32 / window.inner_size().height as f32,
-        0.01,
-        100.0,
+        CameraDescriptor {
+            position: (0.0, 0.0, 3.0),
+            yaw: Deg(-90.0),
+            pitch: Deg(0.0),
+            fovy: 45.0,
+            aspect: window.inner_size().width as f32 / window.inner_size().height as f32,
+            near: 0.01,
+            far: 100.0,
+        },
     );
 
     let mut renderer = Renderer::new(

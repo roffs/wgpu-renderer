@@ -7,6 +7,17 @@ use wgpu::{
     BufferUsages, Device, Queue,
 };
 
+pub struct CameraDescriptor<T: Into<cgmath::Rad<f32>>> {
+    pub position: (f32, f32, f32),
+    pub yaw: T,
+    pub pitch: T,
+
+    pub fovy: f32,
+    pub aspect: f32,
+    pub near: f32,
+    pub far: f32,
+}
+
 pub struct Camera<'a> {
     queue: &'a Queue,
 
@@ -33,16 +44,18 @@ impl<'a> Camera<'a> {
         device: &Device,
         queue: &'a Queue,
         camera_bind_group_layout: &BindGroupLayout,
-        position: (f32, f32, f32),
-
-        yaw: T,
-        pitch: T,
-
-        fovy: f32,
-        aspect: f32,
-        near: f32,
-        far: f32,
+        camera_descriptor: CameraDescriptor<T>,
     ) -> Camera<'a> {
+        let CameraDescriptor {
+            position,
+            yaw,
+            pitch,
+            fovy,
+            aspect,
+            near,
+            far,
+        } = camera_descriptor;
+
         let yaw: Rad<f32> = yaw.into();
         let pitch: Rad<f32> = pitch.into();
 
@@ -93,13 +106,6 @@ impl<'a> Camera<'a> {
         }
     }
 
-    pub fn get_position(&self) -> cgmath::Point3<f32> {
-        self.position
-    }
-
-    pub fn get_rotation(&self) -> cgmath::Matrix4<f32> {
-        Matrix4::look_to_rh((0.0, 0.0, 0.0).into(), self.look_dir, self.up)
-    }
     pub fn get_view(&self) -> cgmath::Matrix4<f32> {
         Matrix4::look_to_rh(self.position, self.look_dir, self.up)
     }
@@ -123,8 +129,8 @@ impl<'a> Camera<'a> {
     }
 
     fn update_buffer(&self) {
-        let projection_matrix = perspective(Deg(self.fovy), self.aspect, self.near, self.far);
-        let view_matrix = Matrix4::look_to_rh(self.position, self.look_dir, self.up);
+        let projection_matrix = self.get_projection();
+        let view_matrix = self.get_view();
         let view_proj_matrix = projection_matrix * view_matrix;
 
         let view_proj_matrix = unsafe {
