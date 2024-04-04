@@ -5,10 +5,11 @@ mod texture;
 mod vertex;
 
 use camera::{Camera, CameraController};
-use cgmath::{Deg, InnerSpace, Vector3, Zero};
+use cgmath::{Deg, Vector3, Zero};
 use graphics::GraphicsContext;
 use winit::{
-    event::{ElementState, Event, KeyEvent, WindowEvent},
+    dpi::PhysicalSize,
+    event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::WindowBuilder,
@@ -18,12 +19,22 @@ fn main() {
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new()
         .with_title("WGPU renderer")
+        .with_inner_size(PhysicalSize {
+            width: 1024,
+            height: 768,
+        })
         .build(&event_loop)
         .unwrap();
 
+    window
+        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+        .unwrap();
+
+    window.set_cursor_visible(false);
+
     let mut graphics_context = GraphicsContext::new(&window);
 
-    let camera_controller = CameraController::new(0.1, 0.2);
+    let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
         (0.0, 0.0, 3.0),
         Deg(-90.0),
@@ -36,7 +47,9 @@ fn main() {
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut translation_direction = Vector3::<f32>::zero();
+    let mut camera_translation_direction = Vector3::<f32>::zero();
+    let mut camera_delta_pitch = 0.0;
+    let mut camera_delta_yaw = 0.0;
 
     event_loop
         .run(|event, elwt| match event {
@@ -57,26 +70,33 @@ fn main() {
                 } => match state {
                     ElementState::Pressed => match keycode {
                         KeyCode::Escape => elwt.exit(),
-                        KeyCode::KeyW => translation_direction += Vector3::unit_x(),
-                        KeyCode::KeyS => translation_direction -= Vector3::unit_x(),
-                        KeyCode::KeyA => translation_direction -= Vector3::unit_z(),
-                        KeyCode::KeyD => translation_direction += Vector3::unit_z(),
-                        KeyCode::Space => translation_direction += Vector3::unit_y(),
-                        KeyCode::ShiftLeft => translation_direction -= Vector3::unit_y(),
+                        KeyCode::KeyW => camera_translation_direction += Vector3::unit_x(),
+                        KeyCode::KeyS => camera_translation_direction -= Vector3::unit_x(),
+                        KeyCode::KeyA => camera_translation_direction -= Vector3::unit_z(),
+                        KeyCode::KeyD => camera_translation_direction += Vector3::unit_z(),
+                        KeyCode::Space => camera_translation_direction += Vector3::unit_y(),
+                        KeyCode::ShiftLeft => camera_translation_direction -= Vector3::unit_y(),
                         _ => {}
                     },
                     ElementState::Released => match keycode {
-                        KeyCode::KeyW => translation_direction -= Vector3::unit_x(),
-                        KeyCode::KeyS => translation_direction += Vector3::unit_x(),
-                        KeyCode::KeyA => translation_direction += Vector3::unit_z(),
-                        KeyCode::KeyD => translation_direction -= Vector3::unit_z(),
-                        KeyCode::Space => translation_direction -= Vector3::unit_y(),
-                        KeyCode::ShiftLeft => translation_direction += Vector3::unit_y(),
+                        KeyCode::KeyW => camera_translation_direction -= Vector3::unit_x(),
+                        KeyCode::KeyS => camera_translation_direction += Vector3::unit_x(),
+                        KeyCode::KeyA => camera_translation_direction += Vector3::unit_z(),
+                        KeyCode::KeyD => camera_translation_direction -= Vector3::unit_z(),
+                        KeyCode::Space => camera_translation_direction -= Vector3::unit_y(),
+                        KeyCode::ShiftLeft => camera_translation_direction += Vector3::unit_y(),
                         _ => {}
                     },
                 },
                 WindowEvent::RedrawRequested => {
-                    camera_controller.translate(&mut camera, translation_direction);
+                    camera_controller.translate(&mut camera, camera_translation_direction);
+                    camera_controller.rotate(
+                        &mut camera,
+                        (camera_delta_pitch as f32, camera_delta_yaw as f32),
+                    );
+                    camera_delta_pitch = 0.0;
+                    camera_delta_yaw = 0.0;
+
                     graphics_context.render(&camera);
                 }
                 WindowEvent::Resized(size) => {
@@ -84,7 +104,13 @@ fn main() {
                 }
                 _ => {}
             },
-
+            Event::DeviceEvent {
+                event: DeviceEvent::MouseMotion { delta },
+                ..
+            } => {
+                camera_delta_pitch += delta.0;
+                camera_delta_yaw += delta.1;
+            }
             Event::AboutToWait => window.request_redraw(),
             _ => {}
         })
