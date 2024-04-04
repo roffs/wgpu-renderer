@@ -6,16 +6,16 @@ mod transform;
 mod vertex;
 
 use camera::{Camera, CameraController, CameraDescriptor};
-use cgmath::{Deg, Matrix, Matrix4, Vector3, Zero};
+use cgmath::{Deg, Vector3, Zero};
 use mesh::Mesh;
 use renderer::Renderer;
 use texture::Texture;
 use transform::Transform;
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
-    BindingType, BufferDescriptor, BufferUsages, CompositeAlphaMode, Device, DeviceDescriptor,
-    Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
-    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
+    BindingType, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance,
+    InstanceDescriptor, Limits, Queue, RequestAdapterOptions, SamplerBindingType, ShaderStages,
+    Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
