@@ -2,8 +2,8 @@ use std::path::Path;
 
 use image::io::Reader;
 use wgpu::{
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d, ImageCopyTextureBase,
-    ImageDataLayout, Origin3d, Queue, TextureDescriptor,
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferDescriptor, BufferUsages, Device,
+    Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, TextureDescriptor,
 };
 
 use crate::{
@@ -130,12 +130,82 @@ impl<'a> Resources<'a> {
                     .for_each(|index| mesh_indices.push(index as u16));
             }
 
-            meshes.push((
-                Mesh::new(self.device, self.queue, &mesh_vertices, &mesh_indices),
-                0,
-            ));
+            meshes.push((self.new_mesh(&mesh_vertices, &mesh_indices), 0));
         }
         Model::new(meshes, materials)
+    }
+
+    pub fn new_mesh(&self, vertices: &[Vertex], indices: &[u16]) -> Mesh {
+        let vertex_buffer_data = as_u8_slice(vertices);
+        let index_buffer_data = as_u8_slice(indices);
+
+        let vertex_buffer = self.device.create_buffer(&BufferDescriptor {
+            label: Some("Vertex buffer"),
+            size: vertex_buffer_data.len() as u64,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.queue
+            .write_buffer(&vertex_buffer, 0, vertex_buffer_data);
+
+        let index_buffer = self.device.create_buffer(&BufferDescriptor {
+            label: Some("Index buffer"),
+            size: index_buffer_data.len() as u64,
+            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.queue.write_buffer(&index_buffer, 0, index_buffer_data);
+
+        Mesh::new(vertex_buffer, index_buffer, indices.len() as u32)
+    }
+
+    // TODO improve
+    pub fn _new_mesh_cube(&self) -> Mesh {
+        let vertices = &[
+            // FRONT
+            Vertex::new((-0.5, -0.5, 0.5), (0.0, 0.0)),
+            Vertex::new((0.5, -0.5, 0.5), (1.0, 0.0)),
+            Vertex::new((0.5, 0.5, 0.5), (1.0, 1.0)),
+            Vertex::new((-0.5, 0.5, 0.5), (0.0, 1.0)),
+            // BACK
+            Vertex::new((-0.5, -0.5, -0.5), (1.0, 0.0)),
+            Vertex::new((0.5, -0.5, -0.5), (0.0, 0.0)),
+            Vertex::new((0.5, 0.5, -0.5), (0.0, 1.0)),
+            Vertex::new((-0.5, 0.5, -0.5), (1.0, 1.0)),
+            // LEFT
+            Vertex::new((-0.5, -0.5, -0.5), (0.0, 0.0)),
+            Vertex::new((-0.5, -0.5, 0.5), (1.0, 0.0)),
+            Vertex::new((-0.5, 0.5, 0.5), (1.0, 1.0)),
+            Vertex::new((-0.5, 0.5, -0.5), (0.0, 1.0)),
+            // RIGHT
+            Vertex::new((0.5, -0.5, -0.5), (1.0, 0.0)),
+            Vertex::new((0.5, -0.5, 0.5), (0.0, 0.0)),
+            Vertex::new((0.5, 0.5, 0.5), (0.0, 1.0)),
+            Vertex::new((0.5, 0.5, -0.5), (1.0, 1.0)),
+            // TOP
+            Vertex::new((-0.5, 0.5, 0.5), (0.0, 0.0)),
+            Vertex::new((0.5, 0.5, 0.5), (1.0, 0.0)),
+            Vertex::new((0.5, 0.5, -0.5), (1.0, 1.0)),
+            Vertex::new((-0.5, 0.5, -0.5), (0.0, 1.0)),
+            // BOTTOM
+            Vertex::new((-0.5, -0.5, 0.5), (1.0, 0.0)),
+            Vertex::new((0.5, -0.5, 0.5), (0.0, 0.0)),
+            Vertex::new((0.5, -0.5, -0.5), (0.0, 1.0)),
+            Vertex::new((-0.5, -0.5, -0.5), (1.0, 1.0)),
+        ];
+
+        let indices: &[u16] = &[
+            0, 1, 2, 0, 2, 3, // FRONT
+            4, 6, 5, 4, 7, 6, // BACK
+            8, 9, 10, 8, 10, 11, // LEFT
+            12, 14, 13, 12, 15, 14, // RIGHT
+            16, 17, 18, 16, 18, 19, // TOP
+            20, 22, 21, 20, 23, 22, // BOTTOM
+        ];
+
+        self.new_mesh(vertices, indices)
     }
 
     pub fn load_texture(
@@ -242,4 +312,9 @@ impl<'a> Resources<'a> {
 
         Texture::new(view, sampler, None)
     }
+}
+
+fn as_u8_slice<T: Sized>(data: &[T]) -> &[u8] {
+    let size = std::mem::size_of_val(data);
+    unsafe { std::slice::from_raw_parts(data as *const [T] as *const u8, size) }
 }
