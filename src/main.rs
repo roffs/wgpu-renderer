@@ -45,9 +45,8 @@ fn main() {
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
 
-    // CAMERA
-    let camera_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Model bind group layout"),
+    let transform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Transform bind group layout"),
         entries: &[BindGroupLayoutEntry {
             binding: 0,
             visibility: ShaderStages::VERTEX,
@@ -60,11 +59,13 @@ fn main() {
         }],
     });
 
+    // CAMERA
+
     let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
         &device,
         &queue,
-        &camera_bind_group_layout,
+        &transform_bind_group_layout,
         CameraDescriptor {
             position: (0.0, 0.0, 3.0),
             yaw: Deg(-90.0),
@@ -75,22 +76,6 @@ fn main() {
             far: 100.0,
         },
     );
-
-    // MODEL TRANSFORM MATRIX
-
-    let model_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Model bind group layout"),
-        entries: &[BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::VERTEX,
-            ty: BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        }],
-    });
 
     // TEXTURE
 
@@ -122,8 +107,8 @@ fn main() {
         &surface,
         &mut config,
         &[
-            &camera_bind_group_layout,
-            &model_bind_group_layout,
+            &transform_bind_group_layout,
+            &transform_bind_group_layout,
             &texture_bind_group_layout,
         ],
     );
@@ -132,7 +117,7 @@ fn main() {
     let transform_matrix = Transform::new(
         &device,
         &queue,
-        &model_bind_group_layout,
+        &transform_bind_group_layout,
         (0.0, 0.0, 0.0),
         1.0,
     );
