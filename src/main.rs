@@ -7,7 +7,7 @@ mod texture;
 mod transform;
 
 use camera::{Camera, CameraController, CameraDescriptor};
-use cgmath::{Deg, Vector3, Zero};
+use cgmath::{Deg, Vector3};
 use render_pass::RenderPass;
 use resources::Resources;
 use transform::Transform;
@@ -46,7 +46,7 @@ fn main() {
 
     // CAMERA
 
-    let camera_controller = CameraController::new(0.1, 0.1);
+    let mut camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
         &device,
         &queue,
@@ -64,7 +64,7 @@ fn main() {
 
     let mut renderer = RenderPass::new(&device, &queue, &surface, &mut config, &resources);
 
-    // GROUP THINS INTO A MODEL
+    // GROUP THINGS INTO A MODEL
     let transform_matrix = Transform::new(
         &device,
         &queue,
@@ -76,10 +76,6 @@ fn main() {
     let shiba = resources.load_model("./assets/models/shiba/scene.gltf");
 
     event_loop.set_control_flow(ControlFlow::Poll);
-
-    let mut camera_translation_direction = Vector3::<f32>::zero();
-    let mut camera_delta_pitch = 0.0;
-    let mut camera_delta_yaw = 0.0;
 
     event_loop
         .run(|event, elwt| match event {
@@ -100,32 +96,26 @@ fn main() {
                 } => match state {
                     ElementState::Pressed => match keycode {
                         KeyCode::Escape => elwt.exit(),
-                        KeyCode::KeyW => camera_translation_direction += Vector3::unit_x(),
-                        KeyCode::KeyS => camera_translation_direction -= Vector3::unit_x(),
-                        KeyCode::KeyA => camera_translation_direction -= Vector3::unit_z(),
-                        KeyCode::KeyD => camera_translation_direction += Vector3::unit_z(),
-                        KeyCode::Space => camera_translation_direction += Vector3::unit_y(),
-                        KeyCode::ShiftLeft => camera_translation_direction -= Vector3::unit_y(),
+                        KeyCode::KeyW => camera_controller.move_direction += Vector3::unit_x(),
+                        KeyCode::KeyS => camera_controller.move_direction -= Vector3::unit_x(),
+                        KeyCode::KeyA => camera_controller.move_direction -= Vector3::unit_z(),
+                        KeyCode::KeyD => camera_controller.move_direction += Vector3::unit_z(),
+                        KeyCode::Space => camera_controller.move_direction += Vector3::unit_y(),
+                        KeyCode::ShiftLeft => camera_controller.move_direction -= Vector3::unit_y(),
                         _ => {}
                     },
                     ElementState::Released => match keycode {
-                        KeyCode::KeyW => camera_translation_direction -= Vector3::unit_x(),
-                        KeyCode::KeyS => camera_translation_direction += Vector3::unit_x(),
-                        KeyCode::KeyA => camera_translation_direction += Vector3::unit_z(),
-                        KeyCode::KeyD => camera_translation_direction -= Vector3::unit_z(),
-                        KeyCode::Space => camera_translation_direction -= Vector3::unit_y(),
-                        KeyCode::ShiftLeft => camera_translation_direction += Vector3::unit_y(),
+                        KeyCode::KeyW => camera_controller.move_direction -= Vector3::unit_x(),
+                        KeyCode::KeyS => camera_controller.move_direction += Vector3::unit_x(),
+                        KeyCode::KeyA => camera_controller.move_direction += Vector3::unit_z(),
+                        KeyCode::KeyD => camera_controller.move_direction -= Vector3::unit_z(),
+                        KeyCode::Space => camera_controller.move_direction -= Vector3::unit_y(),
+                        KeyCode::ShiftLeft => camera_controller.move_direction += Vector3::unit_y(),
                         _ => {}
                     },
                 },
                 WindowEvent::RedrawRequested => {
-                    camera_controller.translate(&mut camera, camera_translation_direction);
-                    camera_controller.rotate(
-                        &mut camera,
-                        (camera_delta_pitch as f32, camera_delta_yaw as f32),
-                    );
-                    camera_delta_pitch = 0.0;
-                    camera_delta_yaw = 0.0;
+                    camera_controller.update(&mut camera);
 
                     let objects = [(&shiba, &transform_matrix)];
 
@@ -141,8 +131,8 @@ fn main() {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
-                camera_delta_pitch += delta.0;
-                camera_delta_yaw += delta.1;
+                camera_controller.yaw_delta += delta.0 as f32;
+                camera_controller.pitch_delta += delta.1 as f32;
             }
             Event::AboutToWait => window.request_redraw(),
             _ => {}
