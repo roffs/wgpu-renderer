@@ -1,10 +1,7 @@
 use std::path::Path;
 
 use image::io::Reader;
-use wgpu::{
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d, ImageCopyTextureBase,
-    ImageDataLayout, Origin3d, Queue, TextureDescriptor,
-};
+use wgpu::{BindGroupLayout, Device, Queue};
 
 use crate::{
     material::Material,
@@ -12,19 +9,16 @@ use crate::{
     texture::Texture,
 };
 
-pub struct Resources<'a> {
-    device: &'a Device,
-    queue: &'a Queue,
-}
+pub struct Resources;
 
-impl<'a> Resources<'a> {
-    pub fn new(device: &'a Device, queue: &'a Queue) -> Resources<'a> {
-        Resources { device, queue }
-    }
-
-    pub fn load_model(&self, layout: &BindGroupLayout, path: &str) -> Model {
-        let relative_path = std::path::Path::new(path);
-        let current_directory = relative_path.parent().unwrap();
+impl Resources {
+    pub fn load_model(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        path: &Path,
+    ) -> Model {
+        let current_directory = path.parent().unwrap();
 
         let file = std::fs::File::open(path).unwrap();
         let reader = std::io::BufReader::new(file);
@@ -63,7 +57,8 @@ impl<'a> Resources<'a> {
                 }
                 gltf::image::Source::Uri { uri, mime_type: _ } => {
                     let path = current_directory.join(uri);
-                    self.load_texture(layout, &path, Some(format!("{}", path.display()).as_str()))
+
+                    Resources::load_texture(device, queue, layout, &path)
                 }
             }
         };
@@ -130,116 +125,34 @@ impl<'a> Resources<'a> {
                     .for_each(|index| mesh_indices.push(index as u16));
             }
 
-            meshes.push((
-                Mesh::new(self.device, self.queue, &mesh_vertices, &mesh_indices),
-                0,
-            ));
+            meshes.push((Mesh::new(device, queue, &mesh_vertices, &mesh_indices), 0));
         }
         Model::new(meshes, materials)
     }
 
     pub fn load_texture(
-        &self,
+        device: &Device,
+        queue: &Queue,
         layout: &BindGroupLayout,
         path: &Path,
-        label: Option<&str>,
     ) -> Texture {
         let image = Reader::open(path).unwrap().decode().unwrap();
 
-        let texture_size = Extent3d {
-            width: image.width(),
-            height: image.height(),
-            depth_or_array_layers: 1,
-        };
+        let width = image.width();
+        let height = image.height();
 
-        let texture = self.device.create_texture(&TextureDescriptor {
-            label,
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
+        let data = image.to_rgba8();
 
-        self.queue.write_texture(
-            ImageCopyTextureBase {
-                texture: &texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &image.to_rgba8(),
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * image.width()),
-                rows_per_image: Some(image.height()),
-            },
-            texture_size,
-        );
+        let label = format!("{}", path.display());
 
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&view),
-                },
-            ],
-        });
-
-        Texture::new(view, sampler, Some(bind_group))
-    }
-
-    pub fn new_depth_texture(&self, width: u32, height: u32, label: Option<&str>) -> Texture {
-        let texture_size = Extent3d {
+        Texture::new(
+            device,
+            queue,
             width,
             height,
-            depth_or_array_layers: 1,
-        };
-
-        let texture = self.device.create_texture(&TextureDescriptor {
-            label,
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: Texture::DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        });
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            compare: Some(wgpu::CompareFunction::LessEqual),
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 100.0,
-            ..Default::default()
-        });
-
-        Texture::new(view, sampler, None)
+            &data,
+            layout,
+            Some(label.as_str()),
+        )
     }
 }

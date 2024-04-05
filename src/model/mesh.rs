@@ -40,7 +40,7 @@ impl Mesh {
         }
     }
 
-    pub fn cube(device: &Device, queue: &Queue) -> Mesh {
+    pub fn _cube(device: &Device, queue: &Queue) -> Mesh {
         let vertices = &[
             // FRONT
             Vertex::new((-0.5, -0.5, 0.5), (0.0, 0.0)),

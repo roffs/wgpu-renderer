@@ -6,6 +6,8 @@ mod resources;
 mod texture;
 mod transform;
 
+use std::path::Path;
+
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
 use render_pass::RenderPass;
@@ -42,8 +44,6 @@ fn main() {
     window.set_cursor_visible(false);
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
-
-    let resources = Resources::new(&device, &queue);
 
     let transform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: Some("Transform bind group layout"),
@@ -106,7 +106,6 @@ fn main() {
         &queue,
         &surface,
         &mut config,
-        &resources,
         &[
             &transform_bind_group_layout,
             &transform_bind_group_layout,
@@ -123,9 +122,11 @@ fn main() {
         1.0,
     );
 
-    let shiba = resources.load_model(
+    let shiba = Resources::load_model(
+        &device,
+        &queue,
         &texture_bind_group_layout,
-        "./assets/models/shiba/scene.gltf",
+        Path::new("./assets/models/shiba/scene.gltf"),
     );
 
     event_loop.set_control_flow(ControlFlow::Poll);
