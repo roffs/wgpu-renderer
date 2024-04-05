@@ -1,6 +1,6 @@
 use wgpu::{BindGroupLayout, Device, Queue};
 
-use crate::{mesh::Mesh, model::Model, texture::Texture, vertex::Vertex};
+use crate::{material::Material, mesh::Mesh, model::Model, texture::Texture, vertex::Vertex};
 
 pub fn load_gltf(
     device: &Device,
@@ -33,7 +33,7 @@ pub fn load_gltf(
     }
 
     // Load materials
-    let mut textures = Vec::new();
+    let mut materials = Vec::new();
 
     let load_texture =
         |device: &Device, queue: &Queue, layout: &BindGroupLayout, texture: &gltf::Texture| {
@@ -71,13 +71,12 @@ pub fn load_gltf(
         // let normal = material.normal_texture().unwrap().texture();
         // let normal = load_texture(&normal);
 
-        // Material::new(program, diffuse, normal)
-        diffuse
+        Material::new(diffuse)
     };
 
     for material in gltf.materials() {
         let material = load_material(material);
-        textures.push(material);
+        materials.push(material);
     }
 
     // Load meshes
@@ -125,5 +124,5 @@ pub fn load_gltf(
 
         meshes.push((Mesh::new(device, queue, &mesh_vertices, &mesh_indices), 0));
     }
-    Model::new(meshes, textures)
+    Model::new(meshes, materials)
 }

@@ -1,5 +1,6 @@
 mod camera;
 mod gltf_loader;
+mod material;
 mod mesh;
 mod model;
 mod render_pass;
