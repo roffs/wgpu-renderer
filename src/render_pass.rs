@@ -7,7 +7,7 @@ use wgpu::{
 
 use crate::{camera::Camera, mesh::Mesh, texture::Texture, transform::Transform, vertex::Vertex};
 
-pub struct Renderer<'a> {
+pub struct RenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
     surface: &'a Surface<'a>,
@@ -16,14 +16,14 @@ pub struct Renderer<'a> {
     depth_texture: Texture,
 }
 
-impl<'a> Renderer<'a> {
+impl<'a> RenderPass<'a> {
     pub fn new(
         device: &'a Device,
         queue: &'a Queue,
         surface: &'a Surface,
         config: &'a mut SurfaceConfiguration,
         bind_group_layouts: &[&BindGroupLayout],
-    ) -> Renderer<'a> {
+    ) -> RenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
@@ -81,7 +81,7 @@ impl<'a> Renderer<'a> {
             multiview: None,
         });
 
-        Renderer {
+        RenderPass {
             device,
             queue,
             surface,

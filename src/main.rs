@@ -1,6 +1,6 @@
 mod camera;
 mod mesh;
-mod renderer;
+mod render_pass;
 mod texture;
 mod transform;
 mod vertex;
@@ -8,7 +8,7 @@ mod vertex;
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3, Zero};
 use mesh::Mesh;
-use renderer::Renderer;
+use render_pass::RenderPass;
 use texture::Texture;
 use transform::Transform;
 use wgpu::{
@@ -159,7 +159,7 @@ fn main() {
         ],
     });
 
-    let mut renderer = Renderer::new(
+    let mut renderer = RenderPass::new(
         &device,
         &queue,
         &surface,
