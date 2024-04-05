@@ -12,9 +12,8 @@ use render_pass::RenderPass;
 use resources::Resources;
 use transform::Transform;
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
-    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
-    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
+    CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
+    Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -45,27 +44,13 @@ fn main() {
 
     let resources = Resources::new(&device, &queue);
 
-    let transform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Transform bind group layout"),
-        entries: &[BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::VERTEX,
-            ty: BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        }],
-    });
-
     // CAMERA
 
     let camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(
         &device,
         &queue,
-        &transform_bind_group_layout,
+        &resources.transform_bind_group_layout,
         CameraDescriptor {
             position: (0.0, 0.0, 3.0),
             yaw: Deg(-90.0),
@@ -77,56 +62,18 @@ fn main() {
         },
     );
 
-    // TEXTURE
-
-    let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Texture bind group layout"),
-        entries: &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            },
-        ],
-    });
-
-    let mut renderer = RenderPass::new(
-        &device,
-        &queue,
-        &surface,
-        &mut config,
-        &resources,
-        &[
-            &transform_bind_group_layout,
-            &transform_bind_group_layout,
-            &texture_bind_group_layout,
-        ],
-    );
+    let mut renderer = RenderPass::new(&device, &queue, &surface, &mut config, &resources);
 
     // GROUP THINS INTO A MODEL
     let transform_matrix = Transform::new(
         &device,
         &queue,
-        &transform_bind_group_layout,
+        &resources.transform_bind_group_layout,
         (0.0, 0.0, 0.0),
         1.0,
     );
 
-    let shiba = resources.load_model(
-        &texture_bind_group_layout,
-        "./assets/models/shiba/scene.gltf",
-    );
+    let shiba = resources.load_model("./assets/models/shiba/scene.gltf");
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
