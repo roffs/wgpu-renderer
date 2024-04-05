@@ -1,12 +1,13 @@
 use wgpu::{
-    BindGroup, BindGroupLayout, DepthBiasState, DepthStencilState, Device, FragmentState,
-    IndexFormat, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState, Queue,
-    RenderPassDepthStencilAttachment, RenderPipeline, StencilState, Surface, SurfaceConfiguration,
-    VertexState,
+    BindGroupLayout, DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
+    Operations, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
+    RenderPipeline, StencilState, Surface, SurfaceConfiguration, VertexState,
 };
 
 use crate::{
-    camera::Camera, mesh::Mesh, model::Model, texture::Texture, transform::Transform,
+    camera::Camera,
+    model::{DrawModel, Model},
+    texture::Texture,
     vertex::Vertex,
 };
 
@@ -153,18 +154,7 @@ impl<'a> RenderPass<'a> {
         render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
 
         for model in models {
-            render_pass.set_bind_group(1, &model.transform, &[]);
-
-            for (mesh, texture_index) in &model.meshes {
-                render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint16);
-                render_pass.set_bind_group(
-                    2,
-                    model.textures[*texture_index].bind_group.as_ref().unwrap(),
-                    &[],
-                );
-                render_pass.draw_indexed(0..mesh.indices_len, 0, 0..1);
-            }
+            render_pass.draw_model(model);
         }
 
         drop(render_pass);

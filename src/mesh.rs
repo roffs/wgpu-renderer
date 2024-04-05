@@ -1,6 +1,6 @@
-use wgpu::{Buffer, BufferDescriptor, BufferUsages, Device, Queue};
+use wgpu::{Buffer, BufferDescriptor, BufferUsages, Device, IndexFormat, Queue, RenderPass};
 
-use crate::vertex::Vertex;
+use crate::{texture::Texture, vertex::Vertex};
 
 pub struct Mesh {
     pub vertex_buffer: Buffer,
@@ -88,4 +88,17 @@ impl Mesh {
 fn as_u8_slice<T: Sized>(data: &[T]) -> &[u8] {
     let size = std::mem::size_of_val(data);
     unsafe { std::slice::from_raw_parts(data as *const [T] as *const u8, size) }
+}
+
+pub trait DrawMesh<'a> {
+    fn draw_mesh(&mut self, mesh: &'a Mesh, texture: &'a Texture);
+}
+
+impl<'a> DrawMesh<'a> for RenderPass<'a> {
+    fn draw_mesh(&mut self, mesh: &'a Mesh, texture: &'a Texture) {
+        self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        self.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint16);
+        self.set_bind_group(2, texture.bind_group.as_ref().unwrap(), &[]);
+        self.draw_indexed(0..mesh.indices_len, 0, 0..1);
+    }
 }

@@ -14,10 +14,9 @@ use render_pass::RenderPass;
 use texture::Texture;
 use transform::Transform;
 use wgpu::{
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
-    BindingType, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance,
-    InstanceDescriptor, Limits, Queue, RequestAdapterOptions, SamplerBindingType, ShaderStages,
-    Surface, SurfaceConfiguration, TextureUsages,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
+    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
+    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
