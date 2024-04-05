@@ -7,6 +7,7 @@ use wgpu::{
 use crate::{
     camera::Camera,
     model::{DrawModel, Model, Vertex},
+    resources::Resources,
     texture::Texture,
     transform::Transform,
 };
@@ -16,6 +17,7 @@ pub struct RenderPass<'a> {
     queue: &'a Queue,
     surface: &'a Surface<'a>,
     config: &'a mut SurfaceConfiguration,
+    resources: &'a Resources<'a>,
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
 }
@@ -26,6 +28,7 @@ impl<'a> RenderPass<'a> {
         queue: &'a Queue,
         surface: &'a Surface,
         config: &'a mut SurfaceConfiguration,
+        resources: &'a Resources,
         bind_group_layouts: &[&BindGroupLayout],
     ) -> RenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -35,7 +38,7 @@ impl<'a> RenderPass<'a> {
 
         // DEPTH TEXTURE
         let depth_texture =
-            Texture::new_depth_texture(device, config.width, config.height, Some("Depth texture"));
+            resources.new_depth_texture(config.width, config.height, Some("Depth texture"));
 
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -90,6 +93,7 @@ impl<'a> RenderPass<'a> {
             queue,
             surface,
             config,
+            resources,
             render_pipeline,
             depth_texture,
         }
@@ -101,8 +105,7 @@ impl<'a> RenderPass<'a> {
             self.config.height = height;
         }
 
-        self.depth_texture = Texture::new_depth_texture(
-            self.device,
+        self.depth_texture = self.resources.new_depth_texture(
             self.config.width,
             self.config.height,
             Some("Depth texture"),

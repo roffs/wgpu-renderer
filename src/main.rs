@@ -1,15 +1,15 @@
 mod camera;
-mod gltf_loader;
 mod material;
 mod model;
 mod render_pass;
+mod resources;
 mod texture;
 mod transform;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3, Zero};
-use gltf_loader::load_gltf;
 use render_pass::RenderPass;
+use resources::Resources;
 use transform::Transform;
 use wgpu::{
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
@@ -42,6 +42,8 @@ fn main() {
     window.set_cursor_visible(false);
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
+
+    let resources = Resources::new(&device, &queue);
 
     let transform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: Some("Transform bind group layout"),
@@ -104,6 +106,7 @@ fn main() {
         &queue,
         &surface,
         &mut config,
+        &resources,
         &[
             &transform_bind_group_layout,
             &transform_bind_group_layout,
@@ -120,9 +123,7 @@ fn main() {
         1.0,
     );
 
-    let shiba = load_gltf(
-        &device,
-        &queue,
+    let shiba = resources.load_model(
         &texture_bind_group_layout,
         "./assets/models/shiba/scene.gltf",
     );
