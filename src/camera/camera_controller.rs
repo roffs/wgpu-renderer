@@ -34,8 +34,8 @@ impl CameraController {
 
         camera.pitch -= Deg(pitch * self.rotation_speed).into();
         camera.pitch = match camera.pitch {
-            angle if angle < Deg(-90.0).into() => Deg(-90.0).into(),
-            angle if angle > Deg(90.0).into() => Deg(90.0).into(),
+            angle if angle < Deg(-89.0).into() => Deg(-89.0).into(),
+            angle if angle > Deg(89.0).into() => Deg(89.0).into(),
             angle => angle,
         };
         camera.update_directions();
