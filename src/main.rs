@@ -1,4 +1,5 @@
 mod camera;
+mod gltf_loader;
 mod mesh;
 mod model;
 mod render_pass;
@@ -8,10 +9,8 @@ mod vertex;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3, Zero};
-use mesh::Mesh;
-use model::Model;
+use gltf_loader::load_gltf;
 use render_pass::RenderPass;
-use texture::Texture;
 use transform::Transform;
 use wgpu::{
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
@@ -76,10 +75,6 @@ fn main() {
         },
     );
 
-    // MESH
-
-    let mesh = Mesh::cube(&device, &queue);
-
     // MODEL TRANSFORM MATRIX
 
     let model_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -95,16 +90,6 @@ fn main() {
             count: None,
         }],
     });
-
-    // MODEL
-
-    let model_matrix = Transform::new(
-        &device,
-        &queue,
-        &model_bind_group_layout,
-        (0.0, 0.0, 0.0),
-        1.0,
-    );
 
     // TEXTURE
 
@@ -130,18 +115,6 @@ fn main() {
         ],
     });
 
-    let texture = Texture::new(
-        &device,
-        &queue,
-        &texture_bind_group_layout,
-        "./assets/textures/test.png",
-        Some("Test texture"),
-    );
-
-    // GROUP THINS INTO A MODEL
-
-    let model = Model::new(vec![(mesh, 0)], vec![texture], model_matrix);
-
     let mut renderer = RenderPass::new(
         &device,
         &queue,
@@ -152,6 +125,22 @@ fn main() {
             &model_bind_group_layout,
             &texture_bind_group_layout,
         ],
+    );
+
+    // GROUP THINS INTO A MODEL
+    let transform_matrix = Transform::new(
+        &device,
+        &queue,
+        &model_bind_group_layout,
+        (0.0, 0.0, 0.0),
+        1.0,
+    );
+
+    let shiba = load_gltf(
+        &device,
+        &queue,
+        &texture_bind_group_layout,
+        "./assets/models/shiba/scene.gltf",
     );
 
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -206,7 +195,7 @@ fn main() {
                     camera_delta_pitch = 0.0;
                     camera_delta_yaw = 0.0;
 
-                    let objects = [&model];
+                    let objects = [(&shiba, &transform_matrix)];
 
                     renderer.render(&objects, &camera);
                 }

@@ -8,6 +8,7 @@ use crate::{
     camera::Camera,
     model::{DrawModel, Model},
     texture::Texture,
+    transform::Transform,
     vertex::Vertex,
 };
 
@@ -111,7 +112,7 @@ impl<'a> RenderPass<'a> {
         self.surface.configure(self.device, self.config);
     }
 
-    pub fn render(&self, models: &[&Model], camera: &Camera) {
+    pub fn render(&self, models: &[(&Model, &Transform)], camera: &Camera) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture
@@ -153,7 +154,8 @@ impl<'a> RenderPass<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
 
-        for model in models {
+        for (model, transform) in models {
+            render_pass.set_bind_group(1, transform, &[]);
             render_pass.draw_model(model);
         }
 

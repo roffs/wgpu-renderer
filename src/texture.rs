@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use image::io::Reader;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d,
@@ -18,10 +20,10 @@ impl Texture {
         device: &Device,
         queue: &Queue,
         layout: &BindGroupLayout,
-        path: &str,
+        path: &Path,
         label: Option<&str>,
     ) -> Texture {
-        let image = Reader::open(path).unwrap().decode().unwrap().flipv();
+        let image = Reader::open(path).unwrap().decode().unwrap();
 
         let texture_size = Extent3d {
             width: image.width(),

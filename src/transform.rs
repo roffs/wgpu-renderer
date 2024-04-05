@@ -20,7 +20,7 @@ impl Transform {
     ) -> Transform {
         let translation_matrix =
             cgmath::Matrix4::from_translation(cgmath::Vector3::<f32>::from(translation));
-        let rotation_matrix = cgmath::Matrix4::<f32>::from_angle_z(Deg(15.0)); // TODO put rotation in constructor
+        let rotation_matrix = cgmath::Matrix4::<f32>::from_angle_x(Deg(-90.0)); // TODO put rotation in constructor
         let scale_matrix = cgmath::Matrix4::<f32>::from_scale(scale);
 
         let transform_matrix = translation_matrix * rotation_matrix * scale_matrix;
