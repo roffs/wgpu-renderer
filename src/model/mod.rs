@@ -1,9 +1,13 @@
+mod mesh;
+mod vertex;
+
 use wgpu::RenderPass;
 
-use crate::{
-    material::Material,
+pub use self::{
     mesh::{DrawMesh, Mesh},
+    vertex::Vertex,
 };
+use crate::material::Material;
 
 pub struct Model {
     pub meshes: Vec<(Mesh, usize)>,

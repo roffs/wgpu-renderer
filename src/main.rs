@@ -1,12 +1,10 @@
 mod camera;
 mod gltf_loader;
 mod material;
-mod mesh;
 mod model;
 mod render_pass;
 mod texture;
 mod transform;
-mod vertex;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3, Zero};

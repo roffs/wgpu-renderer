@@ -6,10 +6,9 @@ use wgpu::{
 
 use crate::{
     camera::Camera,
-    model::{DrawModel, Model},
+    model::{DrawModel, Model, Vertex},
     texture::Texture,
     transform::Transform,
-    vertex::Vertex,
 };
 
 pub struct RenderPass<'a> {

@@ -1,6 +1,10 @@
 use wgpu::{BindGroupLayout, Device, Queue};
 
-use crate::{material::Material, mesh::Mesh, model::Model, texture::Texture, vertex::Vertex};
+use crate::{
+    material::Material,
+    model::{Mesh, Model, Vertex},
+    texture::Texture,
+};
 
 pub fn load_gltf(
     device: &Device,
