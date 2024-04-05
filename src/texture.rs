@@ -1,18 +1,26 @@
 use image::io::Reader;
 use wgpu::{
-    Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler,
-    TextureDescriptor, TextureView,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d,
+    ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler, TextureDescriptor,
+    TextureView,
 };
 
 pub struct Texture {
     pub view: TextureView,
     pub sampler: Sampler,
+    pub bind_group: Option<BindGroup>,
 }
 
 impl Texture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn new(device: &Device, queue: &Queue, path: &str, label: Option<&str>) -> Texture {
+    pub fn new(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        path: &str,
+        label: Option<&str>,
+    ) -> Texture {
         let image = Reader::open(path).unwrap().decode().unwrap().flipv();
 
         let texture_size = Extent3d {
@@ -59,7 +67,26 @@ impl Texture {
             ..Default::default()
         });
 
-        Texture { view, sampler }
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+            ],
+        });
+
+        Texture {
+            view,
+            sampler,
+            bind_group: Some(bind_group),
+        }
     }
 
     pub fn new_depth_texture(
@@ -99,6 +126,10 @@ impl Texture {
             ..Default::default()
         });
 
-        Texture { view, sampler }
+        Texture {
+            view,
+            sampler,
+            bind_group: None,
+        }
     }
 }

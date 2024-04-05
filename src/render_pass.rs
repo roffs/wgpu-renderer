@@ -5,7 +5,10 @@ use wgpu::{
     VertexState,
 };
 
-use crate::{camera::Camera, mesh::Mesh, texture::Texture, transform::Transform, vertex::Vertex};
+use crate::{
+    camera::Camera, mesh::Mesh, model::Model, texture::Texture, transform::Transform,
+    vertex::Vertex,
+};
 
 pub struct RenderPass<'a> {
     device: &'a Device,
@@ -107,12 +110,7 @@ impl<'a> RenderPass<'a> {
         self.surface.configure(self.device, self.config);
     }
 
-    pub fn render(
-        &self,
-        objects: &[(&Mesh, &Transform)],
-        texture_bind_group: &BindGroup,
-        camera: &Camera,
-    ) {
+    pub fn render(&self, models: &[&Model], camera: &Camera) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture
@@ -152,14 +150,21 @@ impl<'a> RenderPass<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
 
-        for (mesh, transform) in objects {
-            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
-            render_pass.set_bind_group(1, transform, &[]);
-            render_pass.set_bind_group(2, texture_bind_group, &[]);
-            render_pass.draw_indexed(0..mesh.indices_len, 0, 0..1);
+        for model in models {
+            render_pass.set_bind_group(1, &model.transform, &[]);
+
+            for (mesh, texture_index) in &model.meshes {
+                render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(mesh.index_buffer.slice(..), IndexFormat::Uint16);
+                render_pass.set_bind_group(
+                    2,
+                    model.textures[*texture_index].bind_group.as_ref().unwrap(),
+                    &[],
+                );
+                render_pass.draw_indexed(0..mesh.indices_len, 0, 0..1);
+            }
         }
 
         drop(render_pass);

@@ -1,5 +1,6 @@
 mod camera;
 mod mesh;
+mod model;
 mod render_pass;
 mod texture;
 mod transform;
@@ -8,6 +9,7 @@ mod vertex;
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3, Zero};
 use mesh::Mesh;
+use model::Model;
 use render_pass::RenderPass;
 use texture::Texture;
 use transform::Transform;
@@ -105,14 +107,6 @@ fn main() {
         1.0,
     );
 
-    let model_matrix_2 = Transform::new(
-        &device,
-        &queue,
-        &model_bind_group_layout,
-        (1.5, 0.0, 0.0),
-        0.5,
-    );
-
     // TEXTURE
 
     let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -140,24 +134,14 @@ fn main() {
     let texture = Texture::new(
         &device,
         &queue,
+        &texture_bind_group_layout,
         "./assets/textures/test.png",
         Some("Test texture"),
     );
 
-    let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-        label: Some("Texture bind group"),
-        layout: &texture_bind_group_layout,
-        entries: &[
-            BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Sampler(&texture.sampler),
-            },
-            BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::TextureView(&texture.view),
-            },
-        ],
-    });
+    // GROUP THINS INTO A MODEL
+
+    let model = Model::new(vec![(mesh, 0)], vec![texture], model_matrix);
 
     let mut renderer = RenderPass::new(
         &device,
@@ -223,9 +207,9 @@ fn main() {
                     camera_delta_pitch = 0.0;
                     camera_delta_yaw = 0.0;
 
-                    let objects = [(&mesh, &model_matrix), (&mesh, &model_matrix_2)];
+                    let objects = [&model];
 
-                    renderer.render(&objects, &texture_bind_group, &camera);
+                    renderer.render(&objects, &camera);
                 }
                 WindowEvent::Resized(size) => {
                     renderer.resize(size.width, size.height);
