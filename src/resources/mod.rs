@@ -2,10 +2,8 @@ use std::path::Path;
 
 use image::io::Reader;
 use wgpu::{
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, Device, Extent3d,
-    ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, SamplerBindingType, ShaderStages,
-    TextureDescriptor,
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferDescriptor, BufferUsages, Device,
+    Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, TextureDescriptor,
 };
 
 use crate::{
@@ -17,59 +15,14 @@ use crate::{
 pub struct Resources<'a> {
     device: &'a Device,
     queue: &'a Queue,
-    pub transform_bind_group_layout: BindGroupLayout,
-    pub texture_bind_group_layout: BindGroupLayout,
 }
 
 impl<'a> Resources<'a> {
     pub fn new(device: &'a Device, queue: &'a Queue) -> Resources<'a> {
-        let transform_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Transform bind group layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX,
-                    ty: BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
-
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Texture bind group layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        Resources {
-            device,
-            queue,
-            transform_bind_group_layout,
-            texture_bind_group_layout,
-        }
+        Resources { device, queue }
     }
 
-    pub fn load_model(&self, path: &str) -> Model {
+    pub fn load_model(&self, layout: &BindGroupLayout, path: &str) -> Model {
         let relative_path = std::path::Path::new(path);
         let current_directory = relative_path.parent().unwrap();
 
@@ -121,7 +74,7 @@ impl<'a> Resources<'a> {
                 .base_color_texture()
                 .unwrap()
                 .texture();
-            let diffuse = load_texture(&self.texture_bind_group_layout, &diffuse);
+            let diffuse = load_texture(layout, &diffuse);
 
             // let normal = material.normal_texture().unwrap().texture();
             // let normal = load_texture(&normal);

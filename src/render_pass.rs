@@ -1,6 +1,6 @@
 use wgpu::{
-    DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
+    BindGroupLayout, DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
+    Operations, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
     RenderPipeline, StencilState, Surface, SurfaceConfiguration, VertexState,
 };
 
@@ -29,6 +29,7 @@ impl<'a> RenderPass<'a> {
         surface: &'a Surface,
         config: &'a mut SurfaceConfiguration,
         resources: &'a Resources,
+        bind_group_layouts: &[&BindGroupLayout],
     ) -> RenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -42,11 +43,7 @@ impl<'a> RenderPass<'a> {
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[
-                &resources.transform_bind_group_layout,
-                &resources.transform_bind_group_layout,
-                &resources.texture_bind_group_layout,
-            ],
+            bind_group_layouts,
             push_constant_ranges: &[],
         });
 
