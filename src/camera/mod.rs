@@ -1,11 +1,7 @@
 mod camera_controller;
-use cgmath::{perspective, Angle, Deg, Matrix, Matrix4, Point3, Rad, Vector3};
+use cgmath::{perspective, Angle, Deg, Matrix4, Point3, Rad, Vector3};
 
 pub use camera_controller::CameraController;
-use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
-    BufferUsages, Device, Queue,
-};
 
 pub struct CameraDescriptor<T: Into<cgmath::Rad<f32>>> {
     pub position: (f32, f32, f32),
@@ -18,9 +14,7 @@ pub struct CameraDescriptor<T: Into<cgmath::Rad<f32>>> {
     pub far: f32,
 }
 
-pub struct Camera<'a> {
-    queue: &'a Queue,
-
+pub struct Camera {
     pub(self) position: Point3<f32>,
     pub(self) yaw: Rad<f32>,
     pub(self) pitch: Rad<f32>,
@@ -34,18 +28,10 @@ pub struct Camera<'a> {
     aspect: f32,
     near: f32,
     far: f32,
-
-    view_projection_buffer: Buffer,
-    pub view_projection_bind_group: BindGroup,
 }
 
-impl<'a> Camera<'a> {
-    pub fn new<T: Into<cgmath::Rad<f32>>>(
-        device: &Device,
-        queue: &'a Queue,
-        camera_bind_group_layout: &BindGroupLayout,
-        camera_descriptor: CameraDescriptor<T>,
-    ) -> Camera<'a> {
+impl Camera {
+    pub fn new<T: Into<cgmath::Rad<f32>>>(camera_descriptor: CameraDescriptor<T>) -> Camera {
         let CameraDescriptor {
             position,
             yaw,
@@ -61,35 +47,7 @@ impl<'a> Camera<'a> {
 
         let (look_dir, up, right, forward) = calculate_local_directions(yaw, pitch);
 
-        let view_projection_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let view_projection_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("View buffer"),
-            size: view_projection_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let projection_matrix = perspective(Deg(fovy), aspect, near, far);
-        let view_matrix = Matrix4::look_to_rh(position.into(), look_dir, up);
-        let view_proj_matrix = projection_matrix * view_matrix;
-
-        let view_proj_matrix = unsafe {
-            std::slice::from_raw_parts(view_proj_matrix.as_ptr() as *const u8, view_projection_size)
-        };
-
-        queue.write_buffer(&view_projection_buffer, 0, view_proj_matrix);
-
-        let view_projection_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Camera bind group"),
-            layout: camera_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: view_projection_buffer.as_entire_binding(),
-            }],
-        });
-
         Camera {
-            queue,
             position: Point3::from(position),
             yaw,
             pitch,
@@ -101,13 +59,15 @@ impl<'a> Camera<'a> {
             aspect,
             near,
             far,
-            view_projection_buffer,
-            view_projection_bind_group,
         }
     }
 
     pub fn get_view(&self) -> cgmath::Matrix4<f32> {
         Matrix4::look_to_rh(self.position, self.look_dir, self.up)
+    }
+
+    pub fn get_rotation(&self) -> cgmath::Matrix4<f32> {
+        Matrix4::look_to_rh((0.0, 0.0, 0.0).into(), self.look_dir, self.up)
     }
 
     pub fn get_projection(&self) -> cgmath::Matrix4<f32> {
@@ -116,7 +76,6 @@ impl<'a> Camera<'a> {
 
     pub fn update_aspect(&mut self, aspect: f32) {
         self.aspect = aspect;
-        self.update_buffer();
     }
 
     pub(self) fn update_directions(&mut self) {
@@ -126,22 +85,6 @@ impl<'a> Camera<'a> {
         self.up = up;
         self.right = right;
         self.forward = forward;
-    }
-
-    fn update_buffer(&self) {
-        let projection_matrix = self.get_projection();
-        let view_matrix = self.get_view();
-        let view_proj_matrix = projection_matrix * view_matrix;
-
-        let view_proj_matrix = unsafe {
-            std::slice::from_raw_parts(
-                view_proj_matrix.as_ptr() as *const u8,
-                std::mem::size_of::<cgmath::Matrix4<f32>>(),
-            )
-        };
-
-        self.queue
-            .write_buffer(&self.view_projection_buffer, 0, view_proj_matrix);
     }
 }
 

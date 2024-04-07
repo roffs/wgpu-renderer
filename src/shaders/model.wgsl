@@ -4,7 +4,7 @@ struct OurStruct {
     scale: vec2f,
     offset: vec2f,
 };
-
+ 
 struct Vertex {
     @location(0) position: vec3f,
     @location(1) uv: vec2f,

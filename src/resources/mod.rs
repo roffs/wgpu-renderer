@@ -4,6 +4,7 @@ use image::io::Reader;
 use wgpu::{BindGroupLayout, Device, Queue};
 
 use crate::{
+    cubemap::CubeMap,
     material::Material,
     model::{Mesh, Model, Vertex},
     texture::Texture,
@@ -153,6 +154,37 @@ impl Resources {
             &data,
             layout,
             Some(label.as_str()),
+        )
+    }
+
+    pub fn load_cube_map(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        paths: [&Path; 6],
+    ) -> CubeMap {
+        let mut data = Vec::new();
+
+        let mut width = 0_u32;
+        let mut height = 0_u32;
+
+        for path in paths {
+            let image = Reader::open(path).unwrap().decode().unwrap().to_rgba8();
+
+            width = image.width();
+            height = image.height();
+
+            data.append(&mut image.into_raw());
+        }
+
+        CubeMap::new(
+            device,
+            queue,
+            width,
+            height,
+            &data,
+            layout,
+            Some("Cubemap texture"),
         )
     }
 }

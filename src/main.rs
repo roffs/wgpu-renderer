@@ -1,8 +1,10 @@
 mod camera;
+mod cubemap;
 mod material;
 mod model;
-mod render_pass;
+mod model_render_pass;
 mod resources;
+mod skybox_render_pass;
 mod texture;
 mod transform;
 
@@ -10,8 +12,9 @@ use std::path::Path;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
-use render_pass::RenderPass;
+use model_render_pass::ModelRenderPass;
 use resources::Resources;
+use skybox_render_pass::SkyboxRenderPass;
 use transform::Transform;
 use wgpu::{
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
@@ -62,20 +65,15 @@ fn main() {
     // CAMERA
 
     let mut camera_controller = CameraController::new(0.1, 0.1);
-    let mut camera = Camera::new(
-        &device,
-        &queue,
-        &transform_bind_group_layout,
-        CameraDescriptor {
-            position: (0.0, 0.0, 3.0),
-            yaw: Deg(-90.0),
-            pitch: Deg(0.0),
-            fovy: 45.0,
-            aspect: window.inner_size().width as f32 / window.inner_size().height as f32,
-            near: 0.01,
-            far: 100.0,
-        },
-    );
+    let mut camera = Camera::new(CameraDescriptor {
+        position: (0.0, 0.0, 3.0),
+        yaw: Deg(-90.0),
+        pitch: Deg(0.0),
+        fovy: 45.0,
+        aspect: window.inner_size().width as f32 / window.inner_size().height as f32,
+        near: 0.01,
+        far: 100.0,
+    });
 
     // TEXTURE
 
@@ -101,11 +99,12 @@ fn main() {
         ],
     });
 
-    let mut model_pass = RenderPass::new(
+    let mut model_pass = ModelRenderPass::new(
         &device,
         &queue,
         &surface,
-        &mut config,
+        &config,
+        &transform_bind_group_layout,
         &[
             &transform_bind_group_layout,
             &transform_bind_group_layout,
@@ -127,6 +126,50 @@ fn main() {
         &queue,
         &texture_bind_group_layout,
         Path::new("./assets/models/shiba/scene.gltf"),
+    );
+
+    // SKYBOX
+
+    let skybox_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Skybox bind group layout"),
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::Cube,
+                    multisampled: false,
+                },
+                count: None,
+            },
+        ],
+    });
+
+    let skybox_paths = [
+        Path::new("./assets/skybox/sky/right.jpg"),
+        Path::new("./assets/skybox/sky/left.jpg"),
+        Path::new("./assets/skybox/sky/top.jpg"),
+        Path::new("./assets/skybox/sky/bottom.jpg"),
+        Path::new("./assets/skybox/sky/front.jpg"),
+        Path::new("./assets/skybox/sky/back.jpg"),
+    ];
+
+    let skybox = Resources::load_cube_map(&device, &queue, &skybox_bind_group_layout, skybox_paths);
+
+    let skybox_render_pass = SkyboxRenderPass::new(
+        &device,
+        &queue,
+        &surface,
+        &config,
+        &transform_bind_group_layout,
+        &skybox_bind_group_layout,
     );
 
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -173,12 +216,20 @@ fn main() {
 
                     let objects = [(&shiba, &transform_matrix)];
 
-                    model_pass.draw(&objects, &camera);
+                    let output = surface.get_current_texture().unwrap();
+                    let view = output
+                        .texture
+                        .create_view(&wgpu::TextureViewDescriptor::default());
+
+                    skybox_render_pass.draw(&view, &skybox, &camera);
+                    model_pass.draw(&view, &objects, &camera);
+
+                    output.present();
                 }
-                WindowEvent::Resized(size) => {
-                    model_pass.resize(size.width, size.height);
-                    camera.update_aspect(size.width as f32 / size.height as f32);
-                }
+                // WindowEvent::Resized(size) => {
+                //     model_pass.resize(size.width, size.height);
+                //     camera.update_aspect(size.width as f32 / size.height as f32);
+                // }
                 _ => {}
             },
             Event::DeviceEvent {

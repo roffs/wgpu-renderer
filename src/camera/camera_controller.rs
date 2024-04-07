@@ -25,7 +25,6 @@ impl CameraController {
     pub fn update(&mut self, camera: &mut Camera) {
         self.translate(camera, self.move_direction);
         self.rotate(camera, self.yaw_delta, self.pitch_delta);
-        camera.update_buffer();
     }
 
     fn translate(&self, camera: &mut Camera, local_direction: cgmath::Vector3<f32>) {

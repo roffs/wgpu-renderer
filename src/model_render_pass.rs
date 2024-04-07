@@ -1,7 +1,9 @@
+use cgmath::Matrix;
 use wgpu::{
-    BindGroupLayout, DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
+    BufferUsages, DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
     Operations, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
-    RenderPipeline, StencilState, Surface, SurfaceConfiguration, VertexState,
+    RenderPipeline, StencilState, Surface, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
@@ -11,26 +13,48 @@ use crate::{
     transform::Transform,
 };
 
-pub struct RenderPass<'a> {
+pub struct ModelRenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
     surface: &'a Surface<'a>,
-    config: &'a mut SurfaceConfiguration,
+    config: &'a SurfaceConfiguration,
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
+    camera_buffer: Buffer,
+    camera_bind_group: BindGroup,
 }
 
-impl<'a> RenderPass<'a> {
+impl<'a> ModelRenderPass<'a> {
     pub fn new(
         device: &'a Device,
         queue: &'a Queue,
         surface: &'a Surface,
-        config: &'a mut SurfaceConfiguration,
+        config: &'a SurfaceConfiguration,
+        camera_bind_group_layout: &BindGroupLayout,
+
         bind_group_layouts: &[&BindGroupLayout],
-    ) -> RenderPass<'a> {
+    ) -> ModelRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/model.wgsl").into()),
+        });
+
+        let camera_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+
+        let camera_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Model camera buffer"),
+            size: camera_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Model camera bind group"),
+            layout: camera_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
         });
 
         // DEPTH TEXTURE
@@ -85,37 +109,45 @@ impl<'a> RenderPass<'a> {
             multiview: None,
         });
 
-        RenderPass {
+        ModelRenderPass {
             device,
             queue,
             surface,
             config,
             render_pipeline,
             depth_texture,
+            camera_buffer,
+            camera_bind_group,
         }
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        if width > 0 && height > 0 {
-            self.config.width = width;
-            self.config.height = height;
-        }
+    // pub fn resize(&mut self, width: u32, height: u32) {
+    //     if width > 0 && height > 0 {
+    //         self.config.width = width;
+    //         self.config.height = height;
+    //     }
 
-        self.depth_texture = Texture::new_depth_texture(
-            self.device,
-            self.config.width,
-            self.config.height,
-            Some("Depth texture"),
-        );
+    //     self.depth_texture = Texture::new_depth_texture(
+    //         self.device,
+    //         self.config.width,
+    //         self.config.height,
+    //         Some("Depth texture"),
+    //     );
 
-        self.surface.configure(self.device, self.config);
-    }
+    //     self.surface.configure(self.device, self.config);
+    // }
 
-    pub fn draw(&self, models: &[(&Model, &Transform)], camera: &Camera) {
-        let output = self.surface.get_current_texture().unwrap();
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+    pub fn draw(&self, view: &TextureView, models: &[(&Model, &Transform)], camera: &Camera) {
+        let view_projection = camera.get_projection() * camera.get_view();
+        let view_projection = unsafe {
+            std::slice::from_raw_parts(
+                view_projection.as_ptr() as *const u8,
+                std::mem::size_of::<cgmath::Matrix4<f32>>(),
+            )
+        };
+
+        self.queue
+            .write_buffer(&self.camera_buffer, 0, view_projection);
 
         let mut encoder = self
             .device
@@ -126,15 +158,10 @@ impl<'a> RenderPass<'a> {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
+                view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
-                        a: 1.0,
-                    }),
+                    load: wgpu::LoadOp::Load,
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -151,7 +178,7 @@ impl<'a> RenderPass<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &camera.view_projection_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
         for (model, transform) in models {
             render_pass.set_bind_group(1, transform, &[]);
@@ -162,6 +189,5 @@ impl<'a> RenderPass<'a> {
         let encoder = encoder.finish();
 
         self.queue.submit(std::iter::once(encoder));
-        output.present();
     }
 }
