@@ -2,7 +2,7 @@ use cgmath::Matrix;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
     BufferUsages, Device, FragmentState, IndexFormat, MultisampleState, PipelineLayoutDescriptor,
-    PrimitiveState, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureView, VertexState,
+    PrimitiveState, Queue, RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
@@ -14,8 +14,6 @@ use crate::{
 pub struct SkyboxRenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
-    surface: &'a Surface<'a>,
-    config: &'a SurfaceConfiguration,
     render_pipeline: RenderPipeline,
     geometry: Mesh,
     camera_buffer: Buffer,
@@ -26,8 +24,7 @@ impl<'a> SkyboxRenderPass<'a> {
     pub fn new(
         device: &'a Device,
         queue: &'a Queue,
-        surface: &'a Surface,
-        config: &'a SurfaceConfiguration,
+        config: &SurfaceConfiguration,
         camera_bind_group_layout: &BindGroupLayout,
         cubemap_bind_group_layout: &BindGroupLayout,
     ) -> SkyboxRenderPass<'a> {
@@ -101,30 +98,12 @@ impl<'a> SkyboxRenderPass<'a> {
         SkyboxRenderPass {
             device,
             queue,
-            surface,
-            config,
             render_pipeline,
             geometry,
             camera_buffer,
             camera_bind_group,
         }
     }
-
-    // pub fn resize(&mut self, width: u32, height: u32) {
-    //     if width > 0 && height > 0 {
-    //         self.config.width = width;
-    //         self.config.height = height;
-    //     }
-
-    //     self.depth_texture = Texture::new_depth_texture(
-    //         self.device,
-    //         self.config.width,
-    //         self.config.height,
-    //         Some("Depth texture"),
-    //     );
-
-    //     self.surface.configure(self.device, self.config);
-    // }
 
     pub fn draw(&self, view: &TextureView, skybox: &CubeMap, camera: &Camera) {
         let view_projection = camera.get_projection() * camera.get_rotation();

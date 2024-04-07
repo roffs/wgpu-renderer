@@ -102,7 +102,6 @@ fn main() {
     let mut model_pass = ModelRenderPass::new(
         &device,
         &queue,
-        &surface,
         &config,
         &transform_bind_group_layout,
         &[
@@ -166,7 +165,6 @@ fn main() {
     let skybox_render_pass = SkyboxRenderPass::new(
         &device,
         &queue,
-        &surface,
         &config,
         &transform_bind_group_layout,
         &skybox_bind_group_layout,
@@ -226,10 +224,20 @@ fn main() {
 
                     output.present();
                 }
-                // WindowEvent::Resized(size) => {
-                //     model_pass.resize(size.width, size.height);
-                //     camera.update_aspect(size.width as f32 / size.height as f32);
-                // }
+                WindowEvent::Resized(size) => {
+                    let width = size.width;
+                    let height = size.height;
+
+                    if width > 0 && height > 0 {
+                        config.width = width;
+                        config.height = height;
+
+                        surface.configure(&device, &config);
+
+                        camera.update_aspect(width as f32 / height as f32);
+                        model_pass.resize(width, height);
+                    }
+                }
                 _ => {}
             },
             Event::DeviceEvent {

@@ -3,7 +3,7 @@ use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
     BufferUsages, DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
     Operations, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
-    RenderPipeline, StencilState, Surface, SurfaceConfiguration, TextureView, VertexState,
+    RenderPipeline, StencilState, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
@@ -16,8 +16,6 @@ use crate::{
 pub struct ModelRenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
-    surface: &'a Surface<'a>,
-    config: &'a SurfaceConfiguration,
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
     camera_buffer: Buffer,
@@ -28,10 +26,8 @@ impl<'a> ModelRenderPass<'a> {
     pub fn new(
         device: &'a Device,
         queue: &'a Queue,
-        surface: &'a Surface,
-        config: &'a SurfaceConfiguration,
+        config: &SurfaceConfiguration,
         camera_bind_group_layout: &BindGroupLayout,
-
         bind_group_layouts: &[&BindGroupLayout],
     ) -> ModelRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -112,8 +108,6 @@ impl<'a> ModelRenderPass<'a> {
         ModelRenderPass {
             device,
             queue,
-            surface,
-            config,
             render_pipeline,
             depth_texture,
             camera_buffer,
@@ -121,21 +115,10 @@ impl<'a> ModelRenderPass<'a> {
         }
     }
 
-    // pub fn resize(&mut self, width: u32, height: u32) {
-    //     if width > 0 && height > 0 {
-    //         self.config.width = width;
-    //         self.config.height = height;
-    //     }
-
-    //     self.depth_texture = Texture::new_depth_texture(
-    //         self.device,
-    //         self.config.width,
-    //         self.config.height,
-    //         Some("Depth texture"),
-    //     );
-
-    //     self.surface.configure(self.device, self.config);
-    // }
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.depth_texture =
+            Texture::new_depth_texture(self.device, width, height, Some("Depth texture"));
+    }
 
     pub fn draw(&self, view: &TextureView, models: &[(&Model, &Transform)], camera: &Camera) {
         let view_projection = camera.get_projection() * camera.get_view();
