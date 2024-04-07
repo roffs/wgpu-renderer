@@ -111,7 +111,7 @@ impl<'a> RenderPass<'a> {
         self.surface.configure(self.device, self.config);
     }
 
-    pub fn render(&self, models: &[(&Model, &Transform)], camera: &Camera) {
+    pub fn draw(&self, models: &[(&Model, &Transform)], camera: &Camera) {
         let output = self.surface.get_current_texture().unwrap();
         let view = output
             .texture

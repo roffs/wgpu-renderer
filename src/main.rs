@@ -101,7 +101,7 @@ fn main() {
         ],
     });
 
-    let mut renderer = RenderPass::new(
+    let mut model_pass = RenderPass::new(
         &device,
         &queue,
         &surface,
@@ -173,10 +173,10 @@ fn main() {
 
                     let objects = [(&shiba, &transform_matrix)];
 
-                    renderer.render(&objects, &camera);
+                    model_pass.draw(&objects, &camera);
                 }
                 WindowEvent::Resized(size) => {
-                    renderer.resize(size.width, size.height);
+                    model_pass.resize(size.width, size.height);
                     camera.update_aspect(size.width as f32 / size.height as f32);
                 }
                 _ => {}
