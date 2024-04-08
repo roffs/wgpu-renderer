@@ -11,6 +11,8 @@ use std::path::Path;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
+use material::Material;
+use model::{Mesh, Model};
 use model_render_pass::ModelRenderPass;
 use resources::Resources;
 use skybox_render_pass::SkyboxRenderPass;
@@ -126,6 +128,24 @@ fn main() {
         Path::new("./assets/models/shiba/scene.gltf"),
     );
 
+    let transform_matrix_2 = Transform::new(
+        &device,
+        &queue,
+        &transform_bind_group_layout,
+        (3.0, 0.0, 0.0),
+        1.0,
+    );
+
+    let cube = Model {
+        meshes: vec![(Mesh::cube(&device, &queue), 0)],
+        materials: vec![Material::new(Resources::load_texture(
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+            Path::new("./assets/textures/test.png"),
+        ))],
+    };
+
     // SKYBOX
 
     let skybox_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -211,7 +231,7 @@ fn main() {
                 WindowEvent::RedrawRequested => {
                     camera_controller.update(&mut camera);
 
-                    let objects = [(&shiba, &transform_matrix)];
+                    let objects = [(&shiba, &transform_matrix), (&cube, &transform_matrix_2)];
 
                     let output = surface.get_current_texture().unwrap();
                     let view = output
