@@ -1,8 +1,12 @@
+mod cubemap;
+
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d,
     ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler, TextureDescriptor,
     TextureView,
 };
+
+pub use cubemap::CubeMap;
 
 pub struct Texture {
     pub view: TextureView,

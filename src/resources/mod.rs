@@ -4,10 +4,9 @@ use image::io::Reader;
 use wgpu::{BindGroupLayout, Device, Queue};
 
 use crate::{
-    cubemap::CubeMap,
     material::Material,
     model::{Mesh, Model, Vertex},
-    texture::Texture,
+    texture::{CubeMap, Texture},
 };
 
 pub struct Resources;

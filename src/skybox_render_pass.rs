@@ -7,8 +7,8 @@ use wgpu::{
 
 use crate::{
     camera::Camera,
-    cubemap::CubeMap,
     model::{Mesh, Vertex},
+    texture::CubeMap,
 };
 
 pub struct SkyboxRenderPass<'a> {

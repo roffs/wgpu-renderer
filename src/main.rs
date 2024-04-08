@@ -1,5 +1,4 @@
 mod camera;
-mod cubemap;
 mod material;
 mod model;
 mod model_render_pass;
