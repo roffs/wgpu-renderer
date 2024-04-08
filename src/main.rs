@@ -182,7 +182,7 @@ fn main() {
 
     let skybox_cubemap = Resources::load_cube_map(&device, &queue, skybox_paths);
 
-    let skybox = Skybox::new(&device, &queue, &skybox_bind_group_layout, skybox_cubemap);
+    let skybox = Skybox::new(&device, &queue, &skybox_bind_group_layout, &skybox_cubemap);
 
     let skybox_render_pass = SkyboxRenderPass::new(
         &device,

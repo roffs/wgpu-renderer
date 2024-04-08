@@ -15,7 +15,7 @@ pub struct SkyboxRenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
     render_pipeline: RenderPipeline,
-    skybox: &'a Skybox,
+    skybox: &'a Skybox<'a>,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 }

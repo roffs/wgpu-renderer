@@ -5,19 +5,19 @@ use wgpu::{
 
 use crate::{model::Mesh, texture::CubeMap};
 
-pub struct Skybox {
-    _cubemap: CubeMap,
+pub struct Skybox<'a> {
+    _cubemap: &'a CubeMap,
     mesh: Mesh,
     bind_group: BindGroup,
 }
 
-impl Skybox {
+impl<'a> Skybox<'a> {
     pub fn new(
         device: &Device,
         queue: &Queue,
         layout: &BindGroupLayout,
-        cubemap: CubeMap,
-    ) -> Skybox {
+        cubemap: &'a CubeMap,
+    ) -> Skybox<'a> {
         let mesh = Mesh::cube(device, queue);
 
         let bind_group_entry = BindGroupEntry {
