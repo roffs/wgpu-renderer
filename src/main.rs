@@ -3,6 +3,7 @@ mod material;
 mod model;
 mod model_render_pass;
 mod resources;
+mod skybox;
 mod skybox_render_pass;
 mod texture;
 mod transform;
@@ -15,6 +16,7 @@ use material::Material;
 use model::{Mesh, Model};
 use model_render_pass::ModelRenderPass;
 use resources::Resources;
+use skybox::Skybox;
 use skybox_render_pass::SkyboxRenderPass;
 use transform::Transform;
 use wgpu::{
@@ -138,12 +140,11 @@ fn main() {
 
     let cube = Model {
         meshes: vec![(Mesh::cube(&device, &queue), 0)],
-        materials: vec![Material::new(Resources::load_texture(
+        materials: vec![Material::new(
             &device,
-            &queue,
             &texture_bind_group_layout,
-            Path::new("./assets/textures/test.png"),
-        ))],
+            Resources::load_texture(&device, &queue, Path::new("./assets/textures/test.png")),
+        )],
     };
 
     // SKYBOX
@@ -179,12 +180,15 @@ fn main() {
         Path::new("./assets/skybox/sky/back.jpg"),
     ];
 
-    let skybox = Resources::load_cube_map(&device, &queue, &skybox_bind_group_layout, skybox_paths);
+    let skybox_cubemap = Resources::load_cube_map(&device, &queue, skybox_paths);
+
+    let skybox = Skybox::new(&device, &queue, &skybox_bind_group_layout, skybox_cubemap);
 
     let skybox_render_pass = SkyboxRenderPass::new(
         &device,
         &queue,
         &config,
+        &skybox,
         &transform_bind_group_layout,
         &skybox_bind_group_layout,
     );
@@ -238,7 +242,7 @@ fn main() {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    skybox_render_pass.draw(&view, &skybox, &camera);
+                    skybox_render_pass.draw(&view, &camera);
                     model_pass.draw(&view, &objects, &camera);
 
                     output.present();

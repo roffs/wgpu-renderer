@@ -44,7 +44,7 @@ impl Resources {
         // Load materials
         let mut materials = Vec::new();
 
-        let load_texture = |layout: &BindGroupLayout, texture: &gltf::Texture| {
+        let load_texture = |texture: &gltf::Texture| {
             match texture.source().source() {
                 gltf::image::Source::View {
                     view: _,
@@ -58,7 +58,7 @@ impl Resources {
                 gltf::image::Source::Uri { uri, mime_type: _ } => {
                     let path = current_directory.join(uri);
 
-                    Resources::load_texture(device, queue, layout, &path)
+                    Resources::load_texture(device, queue, &path)
                 }
             }
         };
@@ -69,12 +69,12 @@ impl Resources {
                 .base_color_texture()
                 .unwrap()
                 .texture();
-            let diffuse = load_texture(layout, &diffuse);
+            let diffuse = load_texture(&diffuse);
 
             // let normal = material.normal_texture().unwrap().texture();
             // let normal = load_texture(&normal);
 
-            Material::new(diffuse)
+            Material::new(device, layout, diffuse)
         };
 
         for material in gltf.materials() {
@@ -130,12 +130,7 @@ impl Resources {
         Model::new(meshes, materials)
     }
 
-    pub fn load_texture(
-        device: &Device,
-        queue: &Queue,
-        layout: &BindGroupLayout,
-        path: &Path,
-    ) -> Texture {
+    pub fn load_texture(device: &Device, queue: &Queue, path: &Path) -> Texture {
         let image = Reader::open(path).unwrap().decode().unwrap();
 
         let width = image.width();
@@ -145,23 +140,10 @@ impl Resources {
 
         let label = format!("{}", path.display());
 
-        Texture::new(
-            device,
-            queue,
-            width,
-            height,
-            &data,
-            layout,
-            Some(label.as_str()),
-        )
+        Texture::new(device, queue, width, height, &data, Some(label.as_str()))
     }
 
-    pub fn load_cube_map(
-        device: &Device,
-        queue: &Queue,
-        layout: &BindGroupLayout,
-        paths: [&Path; 6],
-    ) -> CubeMap {
+    pub fn load_cube_map(device: &Device, queue: &Queue, paths: [&Path; 6]) -> CubeMap {
         let mut data = Vec::new();
 
         let mut width = 0_u32;
@@ -176,14 +158,6 @@ impl Resources {
             data.append(&mut image.into_raw());
         }
 
-        CubeMap::new(
-            device,
-            queue,
-            width,
-            height,
-            &data,
-            layout,
-            Some("Cubemap texture"),
-        )
+        CubeMap::new(device, queue, width, height, &data, Some("Cubemap texture"))
     }
 }

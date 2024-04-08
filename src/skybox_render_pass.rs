@@ -1,21 +1,21 @@
 use cgmath::Matrix;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
-    BufferUsages, Device, FragmentState, IndexFormat, MultisampleState, PipelineLayoutDescriptor,
+    BufferUsages, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor,
     PrimitiveState, Queue, RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
     camera::Camera,
-    model::{Mesh, Vertex},
-    texture::CubeMap,
+    model::Vertex,
+    skybox::{DrawSkybox, Skybox},
 };
 
 pub struct SkyboxRenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
     render_pipeline: RenderPipeline,
-    geometry: Mesh,
+    skybox: &'a Skybox,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 }
@@ -25,6 +25,7 @@ impl<'a> SkyboxRenderPass<'a> {
         device: &'a Device,
         queue: &'a Queue,
         config: &SurfaceConfiguration,
+        skybox: &'a Skybox,
         camera_bind_group_layout: &BindGroupLayout,
         cubemap_bind_group_layout: &BindGroupLayout,
     ) -> SkyboxRenderPass<'a> {
@@ -93,19 +94,17 @@ impl<'a> SkyboxRenderPass<'a> {
             multiview: None,
         });
 
-        let geometry = Mesh::cube(device, queue);
-
         SkyboxRenderPass {
             device,
             queue,
             render_pipeline,
-            geometry,
+            skybox,
             camera_buffer,
             camera_bind_group,
         }
     }
 
-    pub fn draw(&self, view: &TextureView, skybox: &CubeMap, camera: &Camera) {
+    pub fn draw(&self, view: &TextureView, camera: &Camera) {
         let view_projection = camera.get_projection() * camera.get_rotation();
         let view_projection = unsafe {
             std::slice::from_raw_parts(
@@ -139,12 +138,9 @@ impl<'a> SkyboxRenderPass<'a> {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-
-        render_pass.set_vertex_buffer(0, self.geometry.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.geometry.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-        render_pass.set_bind_group(1, skybox.bind_group.as_ref().unwrap(), &[]);
-        render_pass.draw_indexed(0..self.geometry.indices_len, 0, 0..1);
+
+        render_pass.draw_skybox(self.skybox);
 
         drop(render_pass);
         let encoder = encoder.finish();

@@ -1,9 +1,8 @@
 mod cubemap;
 
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, Extent3d,
-    ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler, TextureDescriptor,
-    TextureView,
+    Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler,
+    TextureDescriptor, TextureView,
 };
 
 pub use cubemap::CubeMap;
@@ -11,7 +10,6 @@ pub use cubemap::CubeMap;
 pub struct Texture {
     pub view: TextureView,
     pub sampler: Sampler,
-    pub bind_group: Option<BindGroup>,
 }
 
 impl Texture {
@@ -23,7 +21,6 @@ impl Texture {
         width: u32,
         height: u32,
         data: &[u8],
-        layout: &BindGroupLayout,
         label: Option<&str>,
     ) -> Texture {
         let texture_size = Extent3d {
@@ -70,25 +67,7 @@ impl Texture {
             ..Default::default()
         });
 
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&view),
-                },
-            ],
-        });
-        Texture {
-            view,
-            sampler,
-            bind_group: Some(bind_group),
-        }
+        Texture { view, sampler }
     }
 
     pub fn new_depth_texture(
@@ -128,10 +107,6 @@ impl Texture {
             ..Default::default()
         });
 
-        Texture {
-            view,
-            sampler,
-            bind_group: None,
-        }
+        Texture { view, sampler }
     }
 }
