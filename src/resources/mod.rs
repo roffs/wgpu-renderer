@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use image::io::Reader;
-use wgpu::{BindGroupLayout, Device, Queue};
+use wgpu::{BindGroupLayout, Color, Device, Queue};
 
 use crate::{
     material::Material,
@@ -74,7 +74,18 @@ impl Resources {
             // let normal = material.normal_texture().unwrap().texture();
             // let normal = load_texture(&normal);
 
-            Material::new(device, layout, diffuse)
+            Material::new(
+                device,
+                queue,
+                layout,
+                Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                },
+                Some(diffuse),
+            )
         };
 
         for material in gltf.materials() {

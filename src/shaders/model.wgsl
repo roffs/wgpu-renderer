@@ -30,11 +30,19 @@ fn vs_main(
     return vsout;
 }
 
-
-@group(2) @binding(0) var ourSampler: sampler;
-@group(2) @binding(1) var ourTexture: texture_2d<f32>;
+@group(2) @binding(0) var<uniform> baseColor: vec4f;
+@group(2) @binding(1) var baseColorSampler: sampler;
+@group(2) @binding(2) var baseColorTexture: texture_2d<f32>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
-    return textureSample(ourTexture, ourSampler, vsout.uv);
+    
+    var textureColor: vec4f;
+    if (textureDimensions(baseColorTexture).x > 2) {
+        textureColor = textureSample(baseColorTexture, baseColorSampler, vsout.uv);
+    } else {
+        textureColor = vec4f(1.0, 1.0, 1.0, 1.0);
+    }
+
+    return baseColor * textureColor;
 }

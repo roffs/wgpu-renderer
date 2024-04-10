@@ -20,9 +20,10 @@ use skybox::Skybox;
 use skybox_render_pass::SkyboxRenderPass;
 use transform::Transform;
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, CompositeAlphaMode, Device,
-    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue, RequestAdapterOptions,
-    SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, TextureUsages,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, Color,
+    CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
+    Queue, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
+    TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -78,19 +79,29 @@ fn main() {
         far: 100.0,
     });
 
-    // TEXTURE
+    // MATERIAL
 
-    let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Texture bind group layout"),
+    let material_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Material bind group layout"),
         entries: &[
             BindGroupLayoutEntry {
                 binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
                 visibility: ShaderStages::FRAGMENT,
                 ty: BindingType::Sampler(SamplerBindingType::Filtering),
                 count: None,
             },
             BindGroupLayoutEntry {
-                binding: 1,
+                binding: 2,
                 visibility: ShaderStages::FRAGMENT,
                 ty: BindingType::Texture {
                     sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -110,7 +121,7 @@ fn main() {
         &[
             &transform_bind_group_layout,
             &transform_bind_group_layout,
-            &texture_bind_group_layout,
+            &material_bind_group_layout,
         ],
     );
 
@@ -126,7 +137,7 @@ fn main() {
     let shiba = Resources::load_model(
         &device,
         &queue,
-        &texture_bind_group_layout,
+        &material_bind_group_layout,
         Path::new("./assets/models/shiba/scene.gltf"),
     );
 
@@ -142,8 +153,15 @@ fn main() {
         meshes: vec![(Mesh::cube(&device, &queue), 0)],
         materials: vec![Material::new(
             &device,
-            &texture_bind_group_layout,
-            Resources::load_texture(&device, &queue, Path::new("./assets/textures/test.png")),
+            &queue,
+            &material_bind_group_layout,
+            Color {
+                r: 1.0,
+                g: 0.2,
+                b: 0.2,
+                a: 1.0,
+            },
+            None,
         )],
     };
 
