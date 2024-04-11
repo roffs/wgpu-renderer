@@ -1,12 +1,8 @@
 mod mesh;
-mod vertex;
 
 use wgpu::RenderPass;
 
-pub use self::{
-    mesh::{DrawMesh, Mesh},
-    vertex::Vertex,
-};
+pub use self::mesh::{DrawMesh, Mesh, Vertex};
 use crate::material::Material;
 
 pub struct Model {

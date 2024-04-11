@@ -1,10 +1,11 @@
 mod primitives;
+mod vertex;
 
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, Device, IndexFormat, Queue, RenderPass};
 
 use crate::material::Material;
 
-use super::vertex::Vertex;
+pub use vertex::Vertex;
 
 pub struct Mesh {
     pub vertex_buffer: Buffer,
