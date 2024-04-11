@@ -153,7 +153,6 @@ fn main() {
         meshes: vec![(Mesh::cube(&device, &queue), 0)],
         materials: vec![Material::new(
             &device,
-            &queue,
             &material_bind_group_layout,
             Color {
                 r: 1.0,

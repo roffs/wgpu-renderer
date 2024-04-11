@@ -76,7 +76,6 @@ impl Resources {
 
             Material::new(
                 device,
-                queue,
                 layout,
                 Color {
                     r: 1.0,
@@ -151,7 +150,7 @@ impl Resources {
 
         let label = format!("{}", path.display());
 
-        Texture::new(device, queue, width, height, &data, Some(label.as_str()))
+        Texture::new_with_data(device, queue, width, height, &data, Some(label.as_str()))
     }
 
     pub fn load_cube_map(device: &Device, queue: &Queue, paths: [&Path; 6]) -> CubeMap {

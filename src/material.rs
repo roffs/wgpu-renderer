@@ -1,7 +1,6 @@
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Color, Device,
-    Queue,
 };
 
 use crate::texture::Texture;
@@ -16,7 +15,6 @@ pub struct Material {
 impl Material {
     pub fn new(
         device: &Device,
-        queue: &Queue,
         layout: &BindGroupLayout,
         base_color: Color,
         base_texture: Option<Texture>,
@@ -39,7 +37,7 @@ impl Material {
             contents: color_data,
         });
 
-        let empty_texture = Texture::new(device, queue, 1, 1, &[0, 0, 0, 0], None);
+        let empty_texture = Texture::new(device, 1, 1, None);
 
         let texture = match &base_texture {
             Some(texture) => texture,

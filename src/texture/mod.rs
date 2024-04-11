@@ -8,6 +8,7 @@ use wgpu::{
 pub use cubemap::CubeMap;
 
 pub struct Texture {
+    texture: wgpu::Texture,
     pub view: TextureView,
     pub sampler: Sampler,
 }
@@ -15,15 +16,8 @@ pub struct Texture {
 impl Texture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn new(
-        device: &Device,
-        queue: &Queue,
-        width: u32,
-        height: u32,
-        data: &[u8],
-        label: Option<&str>,
-    ) -> Texture {
-        let texture_size = Extent3d {
+    pub fn new(device: &Device, width: u32, height: u32, label: Option<&str>) -> Texture {
+        let size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
@@ -31,7 +25,7 @@ impl Texture {
 
         let texture = device.create_texture(&TextureDescriptor {
             label,
-            size: texture_size,
+            size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -39,22 +33,6 @@ impl Texture {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-
-        queue.write_texture(
-            ImageCopyTextureBase {
-                texture: &texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            data,
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            texture_size,
-        );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -67,7 +45,43 @@ impl Texture {
             ..Default::default()
         });
 
-        Texture { view, sampler }
+        Texture {
+            texture,
+            view,
+            sampler,
+        }
+    }
+
+    pub fn write(&self, queue: &Queue, data: &[u8]) {
+        queue.write_texture(
+            ImageCopyTextureBase {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            data,
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * self.texture.width()),
+                rows_per_image: Some(self.texture.height()),
+            },
+            self.texture.size(),
+        );
+    }
+
+    pub fn new_with_data(
+        device: &Device,
+        queue: &Queue,
+        width: u32,
+        height: u32,
+        data: &[u8],
+        label: Option<&str>,
+    ) -> Texture {
+        let texture = Texture::new(device, width, height, label);
+        texture.write(queue, data);
+
+        texture
     }
 
     pub fn new_depth_texture(
@@ -76,7 +90,7 @@ impl Texture {
         height: u32,
         label: Option<&str>,
     ) -> Texture {
-        let texture_size = Extent3d {
+        let size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
@@ -84,7 +98,7 @@ impl Texture {
 
         let texture = device.create_texture(&TextureDescriptor {
             label,
-            size: texture_size,
+            size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -107,6 +121,10 @@ impl Texture {
             ..Default::default()
         });
 
-        Texture { view, sampler }
+        Texture {
+            texture,
+            view,
+            sampler,
+        }
     }
 }
