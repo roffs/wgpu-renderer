@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use cgmath::Vector3;
 use image::io::Reader;
 use wgpu::{BindGroupLayout, Color, Device, Queue};
 
@@ -107,7 +108,7 @@ impl Resources {
                 // Read vertex attributes
                 let positions = reader.read_positions().unwrap();
                 let uvs = reader.read_tex_coords(0).map(|v| v.into_f32()).unwrap();
-                // let normals = reader.read_normals().unwrap();
+                let normals = reader.read_normals().unwrap();
                 // let tangents = reader.read_tangents().unwrap();
 
                 // positions.zip(uvs).zip(normals).zip(tangents).for_each(
@@ -120,13 +121,16 @@ impl Resources {
                 //     },
                 // );
 
-                positions.zip(uvs).for_each(|(pos, uv)| {
-                    // let normal: Vector3<f32> = normal.into();
-                    // let tangent: Vector3<f32> = [tangent[0], tangent[1], tangent[2]].into();
-                    // let bitangent = normal.cross(tangent);
+                positions
+                    .zip(uvs)
+                    .zip(normals)
+                    .for_each(|((pos, uv), normal)| {
+                        let normal: Vector3<f32> = normal.into();
+                        // let tangent: Vector3<f32> = [tangent[0], tangent[1], tangent[2]].into();
+                        // let bitangent = normal.cross(tangent);
 
-                    mesh_vertices.push(Vertex::new(pos.into(), uv.into()));
-                });
+                        mesh_vertices.push(Vertex::new(pos.into(), uv.into(), normal.into()));
+                    });
 
                 // Read vertex indices
                 let indices = reader.read_indices().unwrap();
