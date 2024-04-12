@@ -50,9 +50,7 @@ impl Material {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(
-                        base_color_buffer.as_entire_buffer_binding(),
-                    ),
+                    resource: base_color_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,

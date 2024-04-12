@@ -66,7 +66,7 @@ impl<'a> ModelRenderPass<'a> {
         let light_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model light buffer"),
             size: light_buffer_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 

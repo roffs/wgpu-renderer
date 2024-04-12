@@ -162,7 +162,7 @@ fn main() {
             binding: 0,
             visibility: ShaderStages::FRAGMENT,
             ty: BindingType::Buffer {
-                ty: BufferBindingType::Uniform,
+                ty: BufferBindingType::Storage { read_only: true },
                 has_dynamic_offset: false,
                 min_binding_size: None,
             },

@@ -46,7 +46,7 @@ struct PointLight {
     @location(1) color: vec3f,
 }
 
-@group(3) @binding(0) var<uniform> light: PointLight;
+@group(3) @binding(0) var<storage, read> lights: array<PointLight>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
@@ -62,14 +62,20 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
 
     // AMBIENT LIGHT
     var ambientStrength = 0.1;
-    var ambient = ambientStrength * light.color;
+    var ambient = ambientStrength * vec3f(1.0, 1.0, 1.0);
 
     // DIFFUSE LIGHT
     var normal = normalize(vsout.normal);
-    var lightDir = normalize(light.position - vsout.fragment_position.xyz);
 
-    var diff = max(dot(normal, lightDir), 0.0);
-    var diffuse = diff * light.color;
+    var diffuse = vec3f(0.0, 0.0, 0.0);
+
+    for (var i: u32 = 0; i < arrayLength(&lights); i = i + 1 ) {
+        var light = lights[i];
+        var lightDir = normalize(lights[0].position - vsout.fragment_position.xyz);
+    
+        var diff = max(dot(normal, lightDir), 0.0);
+        diffuse += diff * light.color;
+    }
 
     var result = vec4f(ambient + diffuse, 1.0) * objectColor;
 

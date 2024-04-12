@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use cgmath::{Deg, Matrix, Matrix4, SquareMatrix};
+use cgmath::{Deg, Matrix, SquareMatrix};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferDescriptor,
     BufferUsages, Device, Queue,
