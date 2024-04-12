@@ -170,7 +170,8 @@ fn main() {
         }],
     });
 
-    let light = PointLight::new((0.5, 1.0, 0.0), (1.0, 1.0, 1.0));
+    let light = PointLight::new((0.5, 0.0, 0.0), (1.0, 1.0, 1.0));
+    let second_light = PointLight::new((-0.5, 2.0, 0.0), (1.0, 1.0, 1.0));
 
     // MODEL RENDER PASS
 
@@ -280,7 +281,7 @@ fn main() {
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
                     skybox_render_pass.draw(&view, &camera);
-                    model_pass.draw(&view, &objects, &camera, &light);
+                    model_pass.draw(&view, &objects, &camera, &[&light, &second_light]);
 
                     output.present();
                 }

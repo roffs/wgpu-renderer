@@ -71,7 +71,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
 
     for (var i: u32 = 0; i < arrayLength(&lights); i = i + 1 ) {
         var light = lights[i];
-        var lightDir = normalize(lights[0].position - vsout.fragment_position.xyz);
+        var lightDir = normalize(lights[i].position - vsout.fragment_position.xyz);
     
         var diff = max(dot(normal, lightDir), 0.0);
         diffuse += diff * light.color;

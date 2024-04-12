@@ -61,7 +61,7 @@ impl<'a> ModelRenderPass<'a> {
         });
 
         // LIGHT
-        let light_buffer_size = std::mem::size_of::<PointLight>();
+        let light_buffer_size = 2 * std::mem::size_of::<PointLight>();
 
         let light_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model light buffer"),
@@ -158,7 +158,7 @@ impl<'a> ModelRenderPass<'a> {
         view: &TextureView,
         models: &[(&Model, &Transform)],
         camera: &Camera,
-        light: &PointLight,
+        lights: &[&PointLight],
     ) {
         // UPDATE CAMERA BUFFER
 
@@ -175,14 +175,16 @@ impl<'a> ModelRenderPass<'a> {
 
         // UPDATE LIGHT BUFFER
 
-        let light_data = unsafe {
-            std::slice::from_raw_parts(
-                light as *const PointLight as *const u8,
-                std::mem::size_of::<PointLight>(),
-            )
-        };
+        let light_size = std::mem::size_of::<PointLight>();
 
-        self.queue.write_buffer(&self.light_buffer, 0, light_data);
+        for (index, light) in lights.iter().enumerate() {
+            let light_data = unsafe {
+                std::slice::from_raw_parts(*light as *const PointLight as *const u8, light_size)
+            };
+
+            self.queue
+                .write_buffer(&self.light_buffer, (light_size * index) as u64, light_data);
+        }
 
         let mut encoder = self
             .device
