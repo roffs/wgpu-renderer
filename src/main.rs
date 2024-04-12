@@ -1,4 +1,5 @@
 mod camera;
+mod light;
 mod material;
 mod model;
 mod model_render_pass;
@@ -12,6 +13,7 @@ use std::path::Path;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
+use light::PointLight;
 use material::Material;
 use model::{Mesh, Model};
 use model_render_pass::ModelRenderPass;
@@ -113,18 +115,6 @@ fn main() {
         ],
     });
 
-    let mut model_pass = ModelRenderPass::new(
-        &device,
-        &queue,
-        &config,
-        &transform_bind_group_layout,
-        &[
-            &transform_bind_group_layout,
-            &transform_bind_group_layout,
-            &material_bind_group_layout,
-        ],
-    );
-
     // GROUP THINGS INTO A MODEL
     let transform_matrix = Transform::new(
         &device,
@@ -163,6 +153,36 @@ fn main() {
             None,
         )],
     };
+
+    // LIGHT
+
+    let light_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Light bind group layout"),
+        entries: &[BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::FRAGMENT,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+
+    let light = PointLight::new((0.5, 1.0, 0.0), (1.0, 1.0, 1.0));
+
+    // MODEL RENDER PASS
+
+    let mut model_pass = ModelRenderPass::new(
+        &device,
+        &queue,
+        &config,
+        &transform_bind_group_layout,
+        &transform_bind_group_layout,
+        &material_bind_group_layout,
+        &light_bind_group_layout,
+    );
 
     // SKYBOX
 
@@ -260,7 +280,7 @@ fn main() {
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
                     skybox_render_pass.draw(&view, &camera);
-                    model_pass.draw(&view, &objects, &camera);
+                    model_pass.draw(&view, &objects, &camera, &light);
 
                     output.present();
                 }

@@ -8,6 +8,7 @@ use wgpu::{
 
 use crate::{
     camera::Camera,
+    light::PointLight,
     model::{DrawModel, Model, Vertex},
     texture::Texture,
     transform::Transform,
@@ -20,6 +21,8 @@ pub struct ModelRenderPass<'a> {
     depth_texture: Texture,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
+    light_buffer: Buffer,
+    light_bind_group: BindGroup,
 }
 
 impl<'a> ModelRenderPass<'a> {
@@ -28,12 +31,16 @@ impl<'a> ModelRenderPass<'a> {
         queue: &'a Queue,
         config: &SurfaceConfiguration,
         camera_bind_group_layout: &BindGroupLayout,
-        bind_group_layouts: &[&BindGroupLayout],
+        transform_bind_group_layout: &BindGroupLayout,
+        material_bind_group_layout: &BindGroupLayout,
+        light_bind_group_layout: &BindGroupLayout,
     ) -> ModelRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/model.wgsl").into()),
         });
+
+        // CAMERA
 
         let camera_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
 
@@ -53,6 +60,25 @@ impl<'a> ModelRenderPass<'a> {
             }],
         });
 
+        // LIGHT
+        let light_buffer_size = std::mem::size_of::<PointLight>();
+
+        let light_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Model light buffer"),
+            size: light_buffer_size as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let light_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Model light bind group"),
+            layout: light_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: light_buffer.as_entire_binding(),
+            }],
+        });
+
         // DEPTH TEXTURE
         let depth_texture =
             Texture::new_depth_texture(device, config.width, config.height, Some("Depth texture"));
@@ -60,7 +86,12 @@ impl<'a> ModelRenderPass<'a> {
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts,
+            bind_group_layouts: &[
+                camera_bind_group_layout,
+                transform_bind_group_layout,
+                material_bind_group_layout,
+                light_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -112,6 +143,8 @@ impl<'a> ModelRenderPass<'a> {
             depth_texture,
             camera_buffer,
             camera_bind_group,
+            light_buffer,
+            light_bind_group,
         }
     }
 
@@ -120,7 +153,15 @@ impl<'a> ModelRenderPass<'a> {
             Texture::new_depth_texture(self.device, width, height, Some("Depth texture"));
     }
 
-    pub fn draw(&self, view: &TextureView, models: &[(&Model, &Transform)], camera: &Camera) {
+    pub fn draw(
+        &self,
+        view: &TextureView,
+        models: &[(&Model, &Transform)],
+        camera: &Camera,
+        light: &PointLight,
+    ) {
+        // UPDATE CAMERA BUFFER
+
         let view_projection = camera.get_projection() * camera.get_view();
         let view_projection = unsafe {
             std::slice::from_raw_parts(
@@ -131,6 +172,17 @@ impl<'a> ModelRenderPass<'a> {
 
         self.queue
             .write_buffer(&self.camera_buffer, 0, view_projection);
+
+        // UPDATE LIGHT BUFFER
+
+        let light_data = unsafe {
+            std::slice::from_raw_parts(
+                light as *const PointLight as *const u8,
+                std::mem::size_of::<PointLight>(),
+            )
+        };
+
+        self.queue.write_buffer(&self.light_buffer, 0, light_data);
 
         let mut encoder = self
             .device
@@ -162,6 +214,7 @@ impl<'a> ModelRenderPass<'a> {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(3, &self.light_bind_group, &[]);
 
         for (model, transform) in models {
             render_pass.set_bind_group(1, transform, &[]);

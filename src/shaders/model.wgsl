@@ -30,11 +30,18 @@ fn vs_main(
 @group(2) @binding(1) var baseColorSampler: sampler;
 @group(2) @binding(2) var baseColorTexture: texture_2d<f32>;
 
+struct PointLight {
+    @location(0) position: vec3f,
+    @location(1) color: vec3f,
+}
+
+@group(3) @binding(0) var<uniform> light: PointLight;
+
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     
     var textureColor: vec4f;
-    if (textureDimensions(baseColorTexture).x > 2) {
+    if (textureDimensions(baseColorTexture).x > 1) {
         textureColor = textureSample(baseColorTexture, baseColorSampler, vsout.uv);
     } else {
         textureColor = vec4f(1.0, 1.0, 1.0, 1.0);
