@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use cgmath::{Deg, Matrix, Matrix4};
+use cgmath::{Deg, Matrix, Matrix4, SquareMatrix};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferDescriptor,
     BufferUsages, Device, Queue,
@@ -23,16 +23,25 @@ impl Transform {
         let rotation_matrix = cgmath::Matrix4::<f32>::from_angle_x(Deg(-90.0)); // TODO put rotation in constructor
         let scale_matrix = cgmath::Matrix4::<f32>::from_scale(scale);
 
-        let transform_matrix = translation_matrix * rotation_matrix * scale_matrix;
+        let model_matrix = translation_matrix * rotation_matrix * scale_matrix;
+        let normal_matrix = model_matrix.invert().unwrap().transpose();
 
-        let buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
-        let buffer_data = unsafe {
-            std::slice::from_raw_parts(transform_matrix.as_ptr() as *const u8, buffer_size)
+        let uniform = TransformUniform {
+            model_matrix,
+            normal_matrix,
         };
 
-        let model_buffer = device.create_buffer(&BufferDescriptor {
+        let buffer_size = std::mem::size_of::<TransformUniform>();
+        let buffer_data = unsafe {
+            std::slice::from_raw_parts(
+                &uniform as *const TransformUniform as *const u8,
+                buffer_size,
+            )
+        };
+
+        let buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model buffer"),
-            size: std::mem::size_of::<Matrix4<f32>>() as u64,
+            size: std::mem::size_of::<TransformUniform>() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -42,11 +51,11 @@ impl Transform {
             layout,
             entries: &[BindGroupEntry {
                 binding: 0,
-                resource: model_buffer.as_entire_binding(),
+                resource: buffer.as_entire_binding(),
             }],
         });
 
-        queue.write_buffer(&model_buffer, 0, buffer_data);
+        queue.write_buffer(&buffer, 0, buffer_data);
 
         Transform { bind_group }
     }
@@ -58,4 +67,9 @@ impl Deref for Transform {
     fn deref(&self) -> &Self::Target {
         &self.bind_group
     }
+}
+
+struct TransformUniform {
+    model_matrix: cgmath::Matrix4<f32>,
+    normal_matrix: cgmath::Matrix4<f32>,
 }

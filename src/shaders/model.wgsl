@@ -8,9 +8,17 @@ struct VSOut {
     @builtin(position) position: vec4f, 
     @location(0) uv: vec2f,
     @location(1) normal: vec3f,
+    @location(2) fragment_position: vec4f,
 }
+
 @group(0) @binding(0) var<uniform> view_projection: mat4x4f;
-@group(1) @binding(0) var<uniform> model: mat4x4f;
+
+struct Transform {
+    model: mat4x4f,
+    normal: mat4x4f
+}
+
+@group(1) @binding(0) var<uniform> transform: Transform;
 
 @vertex 
 fn vs_main(
@@ -19,9 +27,12 @@ fn vs_main(
 
     var vsout: VSOut;
 
-    vsout.position = view_projection * model * vec4f(vertex.position, 1.0);
+    var vertex_world_position = transform.model * vec4f(vertex.position, 1.0);
+
+    vsout.position = view_projection * vertex_world_position;
     vsout.uv = vertex.uv;
-    vsout.normal = vertex.normal;
+    vsout.normal = (transform.normal * vec4f(vertex.normal, 1.0)).xyz;
+    vsout.fragment_position = vertex_world_position;
     
     return vsout;
 }
@@ -47,5 +58,20 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
         textureColor = vec4f(1.0, 1.0, 1.0, 1.0);
     }
 
-    return (baseColor * textureColor);
+    var objectColor: vec4f = baseColor * textureColor;
+
+    // AMBIENT LIGHT
+    var ambientStrength = 0.1;
+    var ambient = ambientStrength * light.color;
+
+    // DIFFUSE LIGHT
+    var normal = normalize(vsout.normal);
+    var lightDir = normalize(light.position - vsout.fragment_position.xyz);
+
+    var diff = max(dot(normal, lightDir), 0.0);
+    var diffuse = diff * light.color;
+
+    var result = vec4f(ambient + diffuse, 1.0) * objectColor;
+
+    return result;
 }
