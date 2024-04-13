@@ -100,7 +100,11 @@ impl Resources {
             let mut mesh_vertices = Vec::new();
             let mut mesh_indices = Vec::new();
 
+            let mut material_index = 0;
+
             for primitive in mesh.primitives() {
+                material_index = primitive.material().index().unwrap(); //TODO can we extract this outside of the for loop? We wanna set the material once per mesh
+
                 let reader = primitive.reader(|buffer| Some(&buffer_data[buffer.index()]));
 
                 // TODO: better error handling if we can not find some attribute or indices
@@ -111,15 +115,6 @@ impl Resources {
                 let normals = reader.read_normals().unwrap();
                 let tangents = reader.read_tangents();
 
-                // positions.zip(uvs).zip(normals).zip(tangents).for_each(
-                //     |(((pos, uv), normal), tangent)| {
-                //         let normal: Vector3<f32> = normal.into();
-                //         let tangent: Vector3<f32> = [tangent[0], tangent[1], tangent[2]].into();
-                //         let bitangent = normal.cross(tangent);
-
-                //         mesh_vertices.push(Vertex::new(pos, uv));
-                //     },
-                // );
                 match tangents {
                     Some(tangents) => positions.zip(uvs).zip(normals).zip(tangents).for_each(
                         |(((pos, uv), normal), tangent)| {
@@ -159,7 +154,10 @@ impl Resources {
                     .for_each(|index| mesh_indices.push(index as u16));
             }
 
-            meshes.push((Mesh::new(device, &mesh_vertices, &mesh_indices), 0));
+            meshes.push((
+                Mesh::new(device, &mesh_vertices, &mesh_indices),
+                material_index,
+            ));
         }
         Model::new(meshes, materials)
     }
