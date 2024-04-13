@@ -5,14 +5,24 @@ pub struct Vertex {
     position: (f32, f32, f32),
     uv: (f32, f32),
     normal: (f32, f32, f32),
+    tangent: Option<(f32, f32, f32)>,
+    bitangent: Option<(f32, f32, f32)>,
 }
 
 impl<'a> Vertex {
-    pub fn new(position: (f32, f32, f32), uv: (f32, f32), normal: (f32, f32, f32)) -> Vertex {
+    pub fn new(
+        position: (f32, f32, f32),
+        uv: (f32, f32),
+        normal: (f32, f32, f32),
+        tangent: Option<(f32, f32, f32)>,
+        bitangent: Option<(f32, f32, f32)>,
+    ) -> Vertex {
         Vertex {
             position,
             uv,
             normal,
+            tangent,
+            bitangent,
         }
     }
 
@@ -35,6 +45,16 @@ impl<'a> Vertex {
                     format: wgpu::VertexFormat::Float32x3,
                     offset: (std::mem::size_of::<f32>() * 5) as u64,
                     shader_location: 2,
+                },
+                VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    offset: (std::mem::size_of::<f32>() * 8) as u64,
+                    shader_location: 3,
+                },
+                VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    offset: (std::mem::size_of::<f32>() * 11) as u64,
+                    shader_location: 4,
                 },
             ],
         }
