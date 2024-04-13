@@ -1,13 +1,14 @@
 use cgmath::Matrix;
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
-    BufferUsages, DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState,
-    Operations, PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages,
+    DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
+    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
     RenderPipeline, StencilState, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
     camera::Camera,
+    layouts::{Layout, Layouts},
     light::PointLight,
     model::{DrawModel, Model, Vertex},
     texture::Texture,
@@ -30,10 +31,7 @@ impl<'a> ModelRenderPass<'a> {
         device: &'a Device,
         queue: &'a Queue,
         config: &SurfaceConfiguration,
-        camera_bind_group_layout: &BindGroupLayout,
-        transform_bind_group_layout: &BindGroupLayout,
-        material_bind_group_layout: &BindGroupLayout,
-        light_bind_group_layout: &BindGroupLayout,
+        layouts: &Layouts,
         lights_num: usize,
     ) -> ModelRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -54,7 +52,7 @@ impl<'a> ModelRenderPass<'a> {
 
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Model camera bind group"),
-            layout: camera_bind_group_layout,
+            layout: layouts.get(&Layout::Transform),
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: camera_buffer.as_entire_binding(),
@@ -73,7 +71,7 @@ impl<'a> ModelRenderPass<'a> {
 
         let light_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Model light bind group"),
-            layout: light_bind_group_layout,
+            layout: layouts.get(&Layout::Light),
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: light_buffer.as_entire_binding(),
@@ -88,10 +86,10 @@ impl<'a> ModelRenderPass<'a> {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[
-                camera_bind_group_layout,
-                transform_bind_group_layout,
-                material_bind_group_layout,
-                light_bind_group_layout,
+                layouts.get(&Layout::Transform),
+                layouts.get(&Layout::Transform),
+                layouts.get(&Layout::Material),
+                layouts.get(&Layout::Light),
             ],
             push_constant_ranges: &[],
         });

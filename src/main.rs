@@ -1,4 +1,5 @@
 mod camera;
+mod layouts;
 mod light;
 mod material;
 mod model;
@@ -13,6 +14,7 @@ use std::path::Path;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
+use layouts::{Layout, Layouts};
 use light::PointLight;
 use material::Material;
 use model::{Mesh, Model};
@@ -22,9 +24,9 @@ use skybox::Skybox;
 use skybox_render_pass::SkyboxRenderPass;
 use transform::Transform;
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, Color,
-    CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
-    Queue, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Color, CompositeAlphaMode,
+    Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue,
+    RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
     TextureUsages,
 };
 use winit::{
@@ -54,19 +56,7 @@ fn main() {
 
     let (device, queue, mut config, surface) = create_graphics_context(&window);
 
-    let transform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Transform bind group layout"),
-        entries: &[BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::VERTEX,
-            ty: BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        }],
-    });
+    let layouts = Layouts::new(&device);
 
     // CAMERA
 
@@ -81,45 +71,11 @@ fn main() {
         far: 100.0,
     });
 
-    // MATERIAL
-
-    let material_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Material bind group layout"),
-        entries: &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 2,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            },
-        ],
-    });
-
     // GROUP THINGS INTO A MODEL
     let transform_matrix = Transform::new(
         &device,
         &queue,
-        &transform_bind_group_layout,
+        layouts.get(&Layout::Transform),
         (0.0, 0.0, 0.0),
         1.0,
     );
@@ -127,14 +83,14 @@ fn main() {
     let shiba = Resources::load_model(
         &device,
         &queue,
-        &material_bind_group_layout,
+        layouts.get(&Layout::Material),
         Path::new("./assets/models/shiba/scene.gltf"),
     );
 
     let transform_matrix_2 = Transform::new(
         &device,
         &queue,
-        &transform_bind_group_layout,
+        layouts.get(&Layout::Transform),
         (3.0, 0.0, 0.0),
         1.0,
     );
@@ -143,7 +99,7 @@ fn main() {
         meshes: vec![(Mesh::cube(&device, &queue), 0)],
         materials: vec![Material::new(
             &device,
-            &material_bind_group_layout,
+            layouts.get(&Layout::Material),
             Color {
                 r: 1.0,
                 g: 0.2,
@@ -156,36 +112,13 @@ fn main() {
 
     // LIGHT
 
-    let light_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Light bind group layout"),
-        entries: &[BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::FRAGMENT,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        }],
-    });
-
     let light = PointLight::new((0.5, 0.0, 0.0), (1.0, 1.0, 1.0));
     let second_light = PointLight::new((-0.5, 2.0, 0.0), (1.0, 1.0, 1.0));
 
     let lights = [&light, &second_light];
     // MODEL RENDER PASS
 
-    let mut model_pass = ModelRenderPass::new(
-        &device,
-        &queue,
-        &config,
-        &transform_bind_group_layout,
-        &transform_bind_group_layout,
-        &material_bind_group_layout,
-        &light_bind_group_layout,
-        lights.len(),
-    );
+    let mut model_pass = ModelRenderPass::new(&device, &queue, &config, &layouts, lights.len());
 
     // SKYBOX
 
@@ -229,7 +162,7 @@ fn main() {
         &queue,
         &config,
         &skybox,
-        &transform_bind_group_layout,
+        layouts.get(&Layout::Transform),
         &skybox_bind_group_layout,
     );
 
