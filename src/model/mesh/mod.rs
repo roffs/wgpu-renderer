@@ -1,7 +1,10 @@
 mod primitives;
 mod vertex;
 
-use wgpu::{Buffer, BufferDescriptor, BufferUsages, Device, IndexFormat, Queue, RenderPass};
+use wgpu::{
+    util::{BufferInitDescriptor, DeviceExt},
+    Buffer, BufferUsages, Device, IndexFormat, RenderPass,
+};
 
 use crate::material::Material;
 
@@ -14,27 +17,21 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(device: &Device, queue: &Queue, vertices: &[Vertex], indices: &[u16]) -> Mesh {
+    pub fn new(device: &Device, vertices: &[Vertex], indices: &[u16]) -> Mesh {
         let vertex_buffer_data = as_u8_slice(vertices);
         let index_buffer_data = as_u8_slice(indices);
 
-        let vertex_buffer = device.create_buffer(&BufferDescriptor {
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
-            size: vertex_buffer_data.len() as u64,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+            contents: vertex_buffer_data,
+            usage: BufferUsages::VERTEX,
         });
 
-        queue.write_buffer(&vertex_buffer, 0, vertex_buffer_data);
-
-        let index_buffer = device.create_buffer(&BufferDescriptor {
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Index buffer"),
-            size: index_buffer_data.len() as u64,
-            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+            contents: index_buffer_data,
+            usage: BufferUsages::INDEX,
         });
-
-        queue.write_buffer(&index_buffer, 0, index_buffer_data);
 
         Mesh {
             vertex_buffer,

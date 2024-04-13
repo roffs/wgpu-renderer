@@ -1,5 +1,5 @@
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, IndexFormat, Queue,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, IndexFormat,
     RenderPass,
 };
 
@@ -12,13 +12,8 @@ pub struct Skybox<'a> {
 }
 
 impl<'a> Skybox<'a> {
-    pub fn new(
-        device: &Device,
-        queue: &Queue,
-        layout: &BindGroupLayout,
-        cubemap: &'a CubeMap,
-    ) -> Skybox<'a> {
-        let mesh = Mesh::cube(device, queue);
+    pub fn new(device: &Device, layout: &BindGroupLayout, cubemap: &'a CubeMap) -> Skybox<'a> {
+        let mesh = Mesh::cube(device);
 
         let bind_group_entry = BindGroupEntry {
             binding: 1,

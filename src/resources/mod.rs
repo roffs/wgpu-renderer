@@ -139,7 +139,7 @@ impl Resources {
                     .for_each(|index| mesh_indices.push(index as u16));
             }
 
-            meshes.push((Mesh::new(device, queue, &mesh_vertices, &mesh_indices), 0));
+            meshes.push((Mesh::new(device, &mesh_vertices, &mesh_indices), 0));
         }
         Model::new(meshes, materials)
     }

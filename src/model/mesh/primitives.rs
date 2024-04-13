@@ -1,9 +1,9 @@
-use wgpu::{Device, Queue};
+use wgpu::Device;
 
 use super::{Mesh, Vertex};
 
 impl Mesh {
-    pub fn cube(device: &Device, queue: &Queue) -> Mesh {
+    pub fn cube(device: &Device) -> Mesh {
         let vertices = &[
             // FRONT
             Vertex::new((-0.5, -0.5, 0.5), (0.0, 0.0), (0.0, 0.0, 1.0)),
@@ -46,6 +46,6 @@ impl Mesh {
             20, 22, 21, 20, 23, 22, // BOTTOM
         ];
 
-        Mesh::new(device, queue, vertices, indices)
+        Mesh::new(device, vertices, indices)
     }
 }

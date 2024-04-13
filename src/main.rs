@@ -71,7 +71,7 @@ fn main() {
         far: 100.0,
     });
 
-    // GROUP THINGS INTO A MODEL
+    //  MODELS
     let transform_matrix = Transform::new(
         &device,
         &queue,
@@ -95,8 +95,8 @@ fn main() {
         1.0,
     );
 
-    let cube = Model {
-        meshes: vec![(Mesh::cube(&device, &queue), 0)],
+    let flat_cube = Model {
+        meshes: vec![(Mesh::cube(&device), 0)],
         materials: vec![Material::new(
             &device,
             layouts.get(&Layout::Material),
@@ -110,12 +110,28 @@ fn main() {
         )],
     };
 
+    let transform_matrix_3 = Transform::new(
+        &device,
+        &queue,
+        layouts.get(&Layout::Transform),
+        (-2.0, 0.0, 0.0),
+        0.5,
+    );
+
+    let stone_cube = Resources::load_model(
+        &device,
+        &queue,
+        layouts.get(&Layout::Material),
+        Path::new("./assets/models/stone_cube/scene.gltf"),
+    );
+
     // LIGHT
 
     let light = PointLight::new((0.5, 0.0, 0.0), (1.0, 1.0, 1.0));
-    let second_light = PointLight::new((-0.5, 2.0, 0.0), (1.0, 1.0, 1.0));
+    let second_light = PointLight::new((-1.0, 2.0, 1.0), (1.0, 1.0, 1.0));
 
     let lights = [&light, &second_light];
+
     // MODEL RENDER PASS
 
     let mut model_pass = ModelRenderPass::new(&device, &queue, &config, &layouts, lights.len());
@@ -155,7 +171,7 @@ fn main() {
 
     let skybox_cubemap = Resources::load_cube_map(&device, &queue, skybox_paths);
 
-    let skybox = Skybox::new(&device, &queue, &skybox_bind_group_layout, &skybox_cubemap);
+    let skybox = Skybox::new(&device, &skybox_bind_group_layout, &skybox_cubemap);
 
     let skybox_render_pass = SkyboxRenderPass::new(
         &device,
@@ -208,7 +224,11 @@ fn main() {
                 WindowEvent::RedrawRequested => {
                     camera_controller.update(&mut camera);
 
-                    let objects = [(&shiba, &transform_matrix), (&cube, &transform_matrix_2)];
+                    let objects = [
+                        (&shiba, &transform_matrix),
+                        (&flat_cube, &transform_matrix_2),
+                        (&stone_cube, &transform_matrix_3),
+                    ];
 
                     let output = surface.get_current_texture().unwrap();
                     let view = output
