@@ -42,6 +42,8 @@ fn vs_main(
 @group(2) @binding(0) var<uniform> baseColor: vec4f;
 @group(2) @binding(1) var baseColorSampler: sampler;
 @group(2) @binding(2) var baseColorTexture: texture_2d<f32>;
+@group(2) @binding(3) var normalSampler: sampler;
+@group(2) @binding(4) var normalTexture: texture_2d<f32>;
 
 struct PointLight {
     @location(0) position: vec3f,

@@ -65,15 +65,14 @@ impl Resources {
         };
 
         let load_material = |material: gltf::Material| {
-            let diffuse = material
+            let diffuse_texture = material
                 .pbr_metallic_roughness()
                 .base_color_texture()
-                .unwrap()
-                .texture();
-            let diffuse = load_texture(&diffuse);
+                .map(|diffuse| load_texture(&diffuse.texture()));
 
-            // let normal = material.normal_texture().unwrap().texture();
-            // let normal = load_texture(&normal);
+            let normal_texture = material
+                .normal_texture()
+                .map(|normal| load_texture(&normal.texture()));
 
             Material::new(
                 device,
@@ -84,7 +83,8 @@ impl Resources {
                     b: 1.0,
                     a: 1.0,
                 },
-                Some(diffuse),
+                diffuse_texture,
+                normal_texture,
             )
         };
 

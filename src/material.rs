@@ -18,6 +18,7 @@ impl Material {
         layout: &BindGroupLayout,
         base_color: Color,
         base_texture: Option<Texture>,
+        normal_texture: Option<Texture>,
     ) -> Material {
         let color_data = unsafe {
             std::slice::from_raw_parts(
@@ -44,6 +45,11 @@ impl Material {
             None => &empty_texture,
         };
 
+        let norm_texture = match &normal_texture {
+            Some(texture) => texture,
+            None => &empty_texture,
+        };
+
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Material bind group"),
             layout,
@@ -59,6 +65,14 @@ impl Material {
                 BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&norm_texture.sampler),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&norm_texture.view),
                 },
             ],
         });
