@@ -27,8 +27,8 @@ impl Transform {
         let normal_matrix = model_matrix.invert().unwrap().transpose();
 
         let uniform = TransformUniform {
-            model_matrix,
-            normal_matrix,
+            _model_matrix: model_matrix,
+            _normal_matrix: normal_matrix,
         };
 
         let buffer_size = std::mem::size_of::<TransformUniform>();
@@ -70,6 +70,6 @@ impl Deref for Transform {
 }
 
 struct TransformUniform {
-    model_matrix: cgmath::Matrix4<f32>,
-    normal_matrix: cgmath::Matrix4<f32>,
+    _model_matrix: cgmath::Matrix4<f32>,
+    _normal_matrix: cgmath::Matrix4<f32>,
 }

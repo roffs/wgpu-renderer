@@ -34,6 +34,7 @@ impl<'a> ModelRenderPass<'a> {
         transform_bind_group_layout: &BindGroupLayout,
         material_bind_group_layout: &BindGroupLayout,
         light_bind_group_layout: &BindGroupLayout,
+        lights_num: usize,
     ) -> ModelRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -61,7 +62,7 @@ impl<'a> ModelRenderPass<'a> {
         });
 
         // LIGHT
-        let light_buffer_size = 2 * std::mem::size_of::<PointLight>();
+        let light_buffer_size = lights_num * std::mem::size_of::<PointLight>();
 
         let light_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model light buffer"),
