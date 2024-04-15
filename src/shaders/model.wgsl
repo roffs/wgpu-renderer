@@ -11,6 +11,8 @@ struct VSOut {
     @location(0) uv: vec2f,
     @location(1) normal: vec3f,
     @location(2) fragment_position: vec4f,
+    @location(3) tangent: vec3f,
+    @location(4) bitangent: vec3f,
 }
 
 @group(0) @binding(0) var<uniform> view_projection: mat4x4f;
@@ -35,6 +37,8 @@ fn vs_main(
     vsout.uv = vertex.uv;
     vsout.normal = (transform.normal * vec4f(vertex.normal, 1.0)).xyz;
     vsout.fragment_position = vertex_world_position;
+    vsout.tangent = vertex.tangent;
+    vsout.bitangent = vertex.bitangent;
     
     return vsout;
 }
@@ -55,12 +59,25 @@ struct PointLight {
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     
+    // Use base color texture if it is present, use flat color if not.
     var textureColor: vec4f;
     if (textureDimensions(baseColorTexture).x > 1) {
         textureColor = textureSample(baseColorTexture, baseColorSampler, vsout.uv);
     } else {
         textureColor = vec4f(1.0, 1.0, 1.0, 1.0);
     }
+
+    // Use normal texture if it is present, use vertex normals if not.
+    var normal: vec3f;
+    if (textureDimensions(normalTexture).x > 1) {
+        var tbn_matrix = mat3x3f(vsout.tangent, vsout.bitangent, vsout.normal);
+        normal = textureSample(normalTexture, normalSampler, vsout.uv).xyz;
+        normal = normal * 2.0 - 1.0;
+        normal = tbn_matrix * normal;
+    } else {
+        normal = normalize(vsout.normal);
+    }
+    
 
     var objectColor: vec4f = baseColor * textureColor;
 
@@ -69,7 +86,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var ambient = ambientStrength * vec3f(1.0, 1.0, 1.0);
 
     // DIFFUSE LIGHT
-    var normal = normalize(vsout.normal);
+    
 
     var diffuse = vec3f(0.0, 0.0, 0.0);
 

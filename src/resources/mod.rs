@@ -64,6 +64,25 @@ impl Resources {
             }
         };
 
+        let load_normal_texture = |texture: &gltf::Texture| {
+            match texture.source().source() {
+                gltf::image::Source::View {
+                    view: _,
+                    mime_type: _,
+                } => {
+                    // let start = view.offset();
+                    // let end = view.offset() + view.length();
+                    // let data = &buffer_data[view.buffer().index()][start..end];
+                    todo!()
+                }
+                gltf::image::Source::Uri { uri, mime_type: _ } => {
+                    let path = current_directory.join(uri);
+
+                    Resources::load_normal_texture(device, queue, &path)
+                }
+            }
+        };
+
         let load_material = |material: gltf::Material| {
             let diffuse_texture = material
                 .pbr_metallic_roughness()
@@ -72,7 +91,7 @@ impl Resources {
 
             let normal_texture = material
                 .normal_texture()
-                .map(|normal| load_texture(&normal.texture()));
+                .map(|normal| load_normal_texture(&normal.texture()));
 
             Material::new(
                 device,
@@ -118,16 +137,16 @@ impl Resources {
                 match tangents {
                     Some(tangents) => positions.zip(uvs).zip(normals).zip(tangents).for_each(
                         |(((pos, uv), normal), tangent)| {
-                            let normal = Vector3::from(normal);
-                            let tangent = Vector3::new(tangent[0], tangent[0], tangent[0]);
+                            let normal: Vector3<f32> = normal.into();
+                            let tangent: Vector3<f32> = [tangent[0], tangent[1], tangent[2]].into();
                             let bitangent = normal.cross(tangent);
 
                             mesh_vertices.push(Vertex::new(
                                 pos.into(),
                                 uv.into(),
                                 normal.into(),
-                                Some(tangent.into()),
-                                Some(bitangent.into()),
+                                tangent.into(),
+                                bitangent.into(),
                             ));
                         },
                     ),
@@ -141,8 +160,8 @@ impl Resources {
                                 pos.into(),
                                 uv.into(),
                                 normal.into(),
-                                None,
-                                None,
+                                (0.0, 0.0, 0.0),
+                                (0.0, 0.0, 0.0),
                             ));
                         }),
                 }
@@ -173,6 +192,19 @@ impl Resources {
         let label = format!("{}", path.display());
 
         Texture::new_with_data(device, queue, width, height, &data, Some(label.as_str()))
+    }
+
+    pub fn load_normal_texture(device: &Device, queue: &Queue, path: &Path) -> Texture {
+        let image = Reader::open(path).unwrap().decode().unwrap();
+
+        let width = image.width();
+        let height = image.height();
+
+        let data = image.to_rgba8();
+
+        let label = format!("{}", path.display());
+
+        Texture::new_normal_with_data(device, queue, width, height, &data, Some(label.as_str()))
     }
 
     pub fn load_cube_map(device: &Device, queue: &Queue, paths: [&Path; 6]) -> CubeMap {
