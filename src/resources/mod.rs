@@ -26,60 +26,41 @@ impl Resources {
         let gltf = gltf::Gltf::from_reader(reader).unwrap();
 
         // Load buffers
-        let mut buffer_data = Vec::new();
+        let mut buffers = Vec::new();
         for buffer in gltf.buffers() {
-            match buffer.source() {
+            let buffer_data: Vec<u8> = match buffer.source() {
                 gltf::buffer::Source::Uri(uri) => {
-                    let binary_data =
-                        std::fs::read(&current_directory.join(uri)).expect("Failed to load binary");
-                    buffer_data.push(binary_data);
+                    std::fs::read(&current_directory.join(uri)).expect("Failed to load binary")
                 }
                 gltf::buffer::Source::Bin => {
-                    if let Some(blob) = gltf.blob.as_deref() {
-                        buffer_data.push(blob.into())
-                    };
+                    gltf.blob.as_deref().expect("Missing binary blob").into()
                 }
-            }
+            };
+            buffers.push(buffer_data);
         }
 
         // Load materials
         let mut materials = Vec::new();
 
-        let load_texture = |texture: &gltf::Texture| {
-            match texture.source().source() {
-                gltf::image::Source::View {
-                    view: _,
-                    mime_type: _,
-                } => {
-                    // let start = view.offset();
-                    // let end = view.offset() + view.length();
-                    // let data = &buffer_data[view.buffer().index()][start..end];
-                    todo!()
-                }
-                gltf::image::Source::Uri { uri, mime_type: _ } => {
-                    let path = current_directory.join(uri);
+        // TODO remove duplication
 
-                    Resources::load_texture(device, queue, &path)
-                }
+        let load_texture = |texture: &gltf::Texture| match texture.source().source() {
+            gltf::image::Source::View { .. } => {
+                todo!()
+            }
+            gltf::image::Source::Uri { uri, .. } => {
+                let path = current_directory.join(uri);
+                Resources::load_texture(device, queue, &path)
             }
         };
 
-        let load_normal_texture = |texture: &gltf::Texture| {
-            match texture.source().source() {
-                gltf::image::Source::View {
-                    view: _,
-                    mime_type: _,
-                } => {
-                    // let start = view.offset();
-                    // let end = view.offset() + view.length();
-                    // let data = &buffer_data[view.buffer().index()][start..end];
-                    todo!()
-                }
-                gltf::image::Source::Uri { uri, mime_type: _ } => {
-                    let path = current_directory.join(uri);
-
-                    Resources::load_normal_texture(device, queue, &path)
-                }
+        let load_normal_texture = |texture: &gltf::Texture| match texture.source().source() {
+            gltf::image::Source::View { .. } => {
+                todo!()
+            }
+            gltf::image::Source::Uri { uri, .. } => {
+                let path = current_directory.join(uri);
+                Resources::load_normal_texture(device, queue, &path)
             }
         };
 
@@ -124,7 +105,7 @@ impl Resources {
             for primitive in mesh.primitives() {
                 material_index = primitive.material().index().unwrap(); //TODO can we extract this outside of the for loop? We wanna set the material once per mesh
 
-                let reader = primitive.reader(|buffer| Some(&buffer_data[buffer.index()]));
+                let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
                 // TODO: better error handling if we can not find some attribute or indices
 
