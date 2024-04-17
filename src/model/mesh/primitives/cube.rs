@@ -1,6 +1,6 @@
 use wgpu::Device;
 
-use super::{Mesh, Vertex};
+use crate::model::{Mesh, Vertex};
 
 impl Mesh {
     pub fn cube(device: &Device) -> Mesh {

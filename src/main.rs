@@ -22,7 +22,7 @@ use model_render_pass::ModelRenderPass;
 use resources::Resources;
 use skybox::Skybox;
 use skybox_render_pass::SkyboxRenderPass;
-use transform::Transform;
+use transform::{Rotation, Transform};
 use wgpu::{
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Color, CompositeAlphaMode,
     Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue,
@@ -62,7 +62,7 @@ fn main() {
 
     let mut camera_controller = CameraController::new(0.1, 0.1);
     let mut camera = Camera::new(CameraDescriptor {
-        position: (0.0, 0.0, 3.0),
+        position: (0.0, 1.0, 3.0),
         yaw: Deg(-90.0),
         pitch: Deg(0.0),
         fovy: 45.0,
@@ -76,7 +76,8 @@ fn main() {
         &device,
         &queue,
         layouts.get(&Layout::Transform),
-        (0.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        Some(Rotation::X(-90.0)),
         1.0,
     );
 
@@ -91,7 +92,8 @@ fn main() {
         &device,
         &queue,
         layouts.get(&Layout::Transform),
-        (3.0, 0.0, 0.0),
+        (3.0, 1.0, 0.0),
+        Some(Rotation::X(-90.0)),
         1.0,
     );
 
@@ -102,11 +104,15 @@ fn main() {
             layouts.get(&Layout::Material),
             Color {
                 r: 1.0,
-                g: 0.2,
-                b: 0.2,
+                g: 1.0,
+                b: 1.0,
                 a: 1.0,
             },
-            None,
+            Some(Resources::load_texture(
+                &device,
+                &queue,
+                Path::new("./assets/textures/test.png"),
+            )),
             None,
         )],
     };
@@ -115,7 +121,8 @@ fn main() {
         &device,
         &queue,
         layouts.get(&Layout::Transform),
-        (-2.0, 0.0, 0.0),
+        (-2.0, 1.0, 0.0),
+        Some(Rotation::X(-90.0)),
         0.5,
     );
 
@@ -126,10 +133,41 @@ fn main() {
         Path::new("./assets/models/stone_cube/scene.gltf"),
     );
 
+    let floor_transform = Transform::new(
+        &device,
+        &queue,
+        layouts.get(&Layout::Transform),
+        (0.0, 0.0, 0.0),
+        None,
+        10.0,
+    );
+
+    let floor = Model::new(
+        vec![(Mesh::plane(&device), 0)],
+        vec![Material::new(
+            &device,
+            layouts.get(&Layout::Material),
+            Color {
+                r: 1.0,
+                g: 0.4,
+                b: 0.2,
+                a: 1.0,
+            },
+            None,
+            None,
+        )],
+    );
+
+    let entities = [
+        (&shiba, &transform_matrix),
+        (&flat_cube, &transform_matrix_2),
+        (&stone_cube, &transform_matrix_3),
+        (&floor, &floor_transform),
+    ];
     // LIGHT
 
-    let light = PointLight::new((0.5, 0.0, 0.0), (1.0, 1.0, 1.0));
-    let second_light = PointLight::new((-1.0, 2.0, 1.0), (1.0, 1.0, 1.0));
+    let light = PointLight::new((1.0, 5.0, 0.0), (1.0, 1.0, 1.0));
+    let second_light = PointLight::new((-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
 
     let lights = [&light, &second_light];
 
@@ -225,19 +263,13 @@ fn main() {
                 WindowEvent::RedrawRequested => {
                     camera_controller.update(&mut camera);
 
-                    let objects = [
-                        (&shiba, &transform_matrix),
-                        (&flat_cube, &transform_matrix_2),
-                        (&stone_cube, &transform_matrix_3),
-                    ];
-
                     let output = surface.get_current_texture().unwrap();
                     let view = output
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
                     skybox_render_pass.draw(&view, &camera);
-                    model_pass.draw(&view, &objects, &camera, &lights);
+                    model_pass.draw(&view, &entities, &camera, &lights);
 
                     output.present();
                 }

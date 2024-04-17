@@ -6,6 +6,12 @@ use wgpu::{
     BufferUsages, Device, Queue,
 };
 
+pub enum Rotation {
+    X(f32),
+    Y(f32),
+    Z(f32),
+}
+
 pub struct Transform {
     bind_group: BindGroup,
 }
@@ -16,12 +22,22 @@ impl Transform {
         queue: &Queue,
         layout: &BindGroupLayout,
         translation: (f32, f32, f32),
+        rotation: Option<Rotation>,
         scale: f32,
     ) -> Transform {
         let translation_matrix =
             cgmath::Matrix4::from_translation(cgmath::Vector3::<f32>::from(translation));
-        let rotation_matrix = cgmath::Matrix4::<f32>::from_angle_x(Deg(-90.0)); // TODO put rotation in constructor
         let scale_matrix = cgmath::Matrix4::<f32>::from_scale(scale);
+
+        let rotation_matrix = if let Some(rotation) = rotation {
+            match rotation {
+                Rotation::X(deg) => cgmath::Matrix4::<f32>::from_angle_x(Deg(deg)),
+                Rotation::Y(deg) => cgmath::Matrix4::<f32>::from_angle_y(Deg(deg)),
+                Rotation::Z(deg) => cgmath::Matrix4::<f32>::from_angle_z(Deg(deg)),
+            }
+        } else {
+            cgmath::Matrix4::identity()
+        };
 
         let model_matrix = translation_matrix * rotation_matrix * scale_matrix;
         let normal_matrix = model_matrix.invert().unwrap().transpose();
