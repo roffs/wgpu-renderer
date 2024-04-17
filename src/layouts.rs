@@ -10,6 +10,7 @@ pub enum Layout {
     Transform,
     Material,
     Light,
+    Skybox,
 }
 
 pub struct Layouts(HashMap<Layout, wgpu::BindGroupLayout>);
@@ -80,7 +81,7 @@ impl Layouts {
             ],
         });
 
-        let lightp_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let light_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Light bind group layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
@@ -94,9 +95,32 @@ impl Layouts {
             }],
         });
 
+        let skybox_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Skybox bind group layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::Cube,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
         layouts.insert(Layout::Transform, transform_layout);
         layouts.insert(Layout::Material, material_layout);
-        layouts.insert(Layout::Light, lightp_layout);
+        layouts.insert(Layout::Light, light_layout);
+        layouts.insert(Layout::Skybox, skybox_layout);
 
         Layouts(layouts)
     }

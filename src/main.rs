@@ -3,10 +3,10 @@ mod layouts;
 mod light;
 mod material;
 mod model;
-mod model_render_pass;
+mod render_pass;
 mod resources;
+mod scene;
 mod skybox;
-mod skybox_render_pass;
 mod texture;
 mod transform;
 
@@ -18,16 +18,14 @@ use layouts::{Layout, Layouts};
 use light::PointLight;
 use material::Material;
 use model::{Mesh, Model};
-use model_render_pass::ModelRenderPass;
+use render_pass::RenderPasses;
 use resources::Resources;
+use scene::Scene;
 use skybox::Skybox;
-use skybox_render_pass::SkyboxRenderPass;
 use transform::{Rotation, Transform};
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Color, CompositeAlphaMode,
-    Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue,
-    RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration,
-    TextureUsages,
+    Color, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor,
+    Limits, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -158,46 +156,11 @@ fn main() {
         )],
     );
 
-    let entities = [
-        (&shiba, &transform_matrix),
-        (&flat_cube, &transform_matrix_2),
-        (&stone_cube, &transform_matrix_3),
-        (&floor, &floor_transform),
-    ];
-    // LIGHT
-
-    let light = PointLight::new((1.0, 5.0, 0.0), (1.0, 1.0, 1.0));
-    let second_light = PointLight::new((-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
-
-    let lights = [&light, &second_light];
-
     // MODEL RENDER PASS
 
-    let mut model_pass = ModelRenderPass::new(&device, &queue, &config, &layouts, lights.len());
+    let mut render_passes = RenderPasses::new(&device, &queue, &config, &layouts);
 
     // SKYBOX
-
-    let skybox_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Skybox bind group layout"),
-        entries: &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    view_dimension: wgpu::TextureViewDimension::Cube,
-                    multisampled: false,
-                },
-                count: None,
-            },
-        ],
-    });
 
     let skybox_paths = [
         Path::new("./assets/skybox/sky/right.jpg"),
@@ -209,17 +172,28 @@ fn main() {
     ];
 
     let skybox_cubemap = Resources::load_cube_map(&device, &queue, skybox_paths);
+    let skybox = Skybox::new(&device, layouts.get(&Layout::Skybox), &skybox_cubemap);
 
-    let skybox = Skybox::new(&device, &skybox_bind_group_layout, &skybox_cubemap);
+    // LIGHT
 
-    let skybox_render_pass = SkyboxRenderPass::new(
-        &device,
-        &queue,
-        &config,
-        &skybox,
-        layouts.get(&Layout::Transform),
-        &skybox_bind_group_layout,
-    );
+    let light = PointLight::new((1.0, 5.0, 0.0), (1.0, 1.0, 1.0));
+    let second_light = PointLight::new((-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
+
+    let lights = vec![light, second_light];
+
+    // SCENE
+    let entities = vec![
+        (shiba, transform_matrix),
+        (flat_cube, transform_matrix_2),
+        (stone_cube, transform_matrix_3),
+        (floor, floor_transform),
+    ];
+
+    let scene = Scene {
+        entities,
+        lights,
+        skybox,
+    };
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
@@ -268,8 +242,11 @@ fn main() {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    skybox_render_pass.draw(&view, &camera);
-                    model_pass.draw(&view, &entities, &camera, &lights);
+                    let model_pass = render_passes.get(&render_pass::PassKind::Model);
+                    let skybox_pass = render_passes.get(&render_pass::PassKind::Skybox);
+
+                    skybox_pass.draw(&view, &camera, &scene);
+                    model_pass.draw(&view, &camera, &scene);
 
                     output.present();
                 }
@@ -284,7 +261,7 @@ fn main() {
                         surface.configure(&device, &config);
 
                         camera.update_aspect(width as f32 / height as f32);
-                        model_pass.resize(width, height);
+                        render_passes.resize(width, height)
                     }
                 }
                 _ => {}

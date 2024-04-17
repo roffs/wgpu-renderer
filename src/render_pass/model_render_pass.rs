@@ -10,10 +10,11 @@ use crate::{
     camera::Camera,
     layouts::{Layout, Layouts},
     light::PointLight,
-    model::{DrawModel, Model, Vertex},
+    model::{DrawModel, Vertex},
     texture::Texture,
-    transform::Transform,
 };
+
+use super::RenderPass;
 
 pub struct ModelRenderPass<'a> {
     device: &'a Device,
@@ -36,7 +37,7 @@ impl<'a> ModelRenderPass<'a> {
     ) -> ModelRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/model.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
         });
 
         // CAMERA
@@ -146,21 +147,10 @@ impl<'a> ModelRenderPass<'a> {
             light_bind_group,
         }
     }
+}
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.depth_texture =
-            Texture::new_depth_texture(self.device, width, height, Some("Depth texture"));
-    }
-
-    pub fn draw(
-        &self,
-        view: &TextureView,
-        models: &[(&Model, &Transform)],
-        camera: &Camera,
-        lights: &[&PointLight],
-    ) {
-        // UPDATE CAMERA BUFFER
-
+impl<'a> RenderPass for ModelRenderPass<'a> {
+    fn draw(&self, view: &TextureView, camera: &Camera, scene: &crate::scene::Scene) {
         let view_projection = camera.get_projection() * camera.get_view();
         let view_projection = unsafe {
             std::slice::from_raw_parts(
@@ -176,9 +166,9 @@ impl<'a> ModelRenderPass<'a> {
 
         let light_size = std::mem::size_of::<PointLight>();
 
-        for (index, light) in lights.iter().enumerate() {
+        for (index, light) in scene.lights.iter().enumerate() {
             let light_data = unsafe {
-                std::slice::from_raw_parts(*light as *const PointLight as *const u8, light_size)
+                std::slice::from_raw_parts(light as *const PointLight as *const u8, light_size)
             };
 
             self.queue
@@ -217,7 +207,7 @@ impl<'a> ModelRenderPass<'a> {
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
         render_pass.set_bind_group(3, &self.light_bind_group, &[]);
 
-        for (model, transform) in models {
+        for (model, transform) in &scene.entities {
             render_pass.set_bind_group(1, transform, &[]);
             render_pass.draw_model(model);
         }
@@ -226,5 +216,10 @@ impl<'a> ModelRenderPass<'a> {
         let encoder = encoder.finish();
 
         self.queue.submit(std::iter::once(encoder));
+    }
+
+    fn resize(&mut self, width: u32, height: u32) {
+        self.depth_texture =
+            Texture::new_depth_texture(self.device, width, height, Some("Depth texture"));
     }
 }

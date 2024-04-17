@@ -6,6 +6,7 @@ use wgpu::{
     BufferUsages, Device, Queue,
 };
 
+#[allow(dead_code)]
 pub enum Rotation {
     X(f32),
     Y(f32),

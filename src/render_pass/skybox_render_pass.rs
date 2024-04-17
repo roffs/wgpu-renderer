@@ -1,21 +1,23 @@
 use cgmath::Matrix;
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferDescriptor,
-    BufferUsages, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor,
-    PrimitiveState, Queue, RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages, Device,
+    FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue,
+    RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
     camera::Camera,
+    layouts::{Layout, Layouts},
     model::Vertex,
-    skybox::{DrawSkybox, Skybox},
+    skybox::DrawSkybox,
 };
+
+use super::RenderPass;
 
 pub struct SkyboxRenderPass<'a> {
     device: &'a Device,
     queue: &'a Queue,
     render_pipeline: RenderPipeline,
-    skybox: &'a Skybox<'a>,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 }
@@ -25,13 +27,11 @@ impl<'a> SkyboxRenderPass<'a> {
         device: &'a Device,
         queue: &'a Queue,
         config: &SurfaceConfiguration,
-        skybox: &'a Skybox,
-        camera_bind_group_layout: &BindGroupLayout,
-        cubemap_bind_group_layout: &BindGroupLayout,
+        layouts: &Layouts,
     ) -> SkyboxRenderPass<'a> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/skybox.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
         });
 
         let camera_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
@@ -45,7 +45,7 @@ impl<'a> SkyboxRenderPass<'a> {
 
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Skybox camera bind group"),
-            layout: camera_bind_group_layout,
+            layout: layouts.get(&Layout::Transform),
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: camera_buffer.as_entire_binding(),
@@ -55,7 +55,10 @@ impl<'a> SkyboxRenderPass<'a> {
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Skybox pipeline layout"),
-            bind_group_layouts: &[camera_bind_group_layout, cubemap_bind_group_layout],
+            bind_group_layouts: &[
+                layouts.get(&Layout::Transform),
+                layouts.get(&Layout::Skybox),
+            ],
             push_constant_ranges: &[],
         });
 
@@ -98,13 +101,14 @@ impl<'a> SkyboxRenderPass<'a> {
             device,
             queue,
             render_pipeline,
-            skybox,
             camera_buffer,
             camera_bind_group,
         }
     }
+}
 
-    pub fn draw(&self, view: &TextureView, camera: &Camera) {
+impl<'a> RenderPass for SkyboxRenderPass<'a> {
+    fn draw(&self, view: &TextureView, camera: &Camera, scene: &crate::scene::Scene) {
         let view_projection = camera.get_projection() * camera.get_rotation();
         let view_projection = unsafe {
             std::slice::from_raw_parts(
@@ -140,11 +144,13 @@ impl<'a> SkyboxRenderPass<'a> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
-        render_pass.draw_skybox(self.skybox);
+        render_pass.draw_skybox(&scene.skybox);
 
         drop(render_pass);
         let encoder = encoder.finish();
 
         self.queue.submit(std::iter::once(encoder));
     }
+
+    fn resize(&mut self, _width: u32, _height: u32) {}
 }
