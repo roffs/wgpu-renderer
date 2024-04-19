@@ -1,4 +1,5 @@
 mod camera;
+mod gpu_context;
 mod layouts;
 mod light;
 mod material;
@@ -7,13 +8,16 @@ mod render_pass;
 mod resources;
 mod scene;
 mod skybox;
+mod surface_context;
 mod texture;
 mod transform;
+mod window_context;
 
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
+use gpu_context::GpuContext;
 use layouts::{Layout, Layouts};
 use light::PointLight;
 use material::Material;
@@ -22,145 +26,14 @@ use render_pass::RenderPasses;
 use resources::Resources;
 use scene::Scene;
 use skybox::Skybox;
+use surface_context::SurfaceContext;
 use transform::{Rotation, Transform};
-use wgpu::{
-    Color, CompositeAlphaMode, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
-    RequestAdapterOptions, SurfaceConfiguration, TextureUsages,
-};
+use wgpu::Color;
+use window_context::WindowContext;
 use winit::{
-    dpi::PhysicalSize,
     event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowBuilder},
 };
-
-struct WindowContext {
-    event_loop: EventLoop<()>,
-    window: Arc<Window>,
-}
-
-impl WindowContext {
-    pub fn new() -> WindowContext {
-        let event_loop = EventLoop::new().unwrap();
-        let window = WindowBuilder::new()
-            .with_title("WGPU renderer")
-            .with_inner_size(PhysicalSize {
-                width: 1024,
-                height: 768,
-            })
-            .build(&event_loop)
-            .unwrap();
-
-        window
-            .set_cursor_grab(winit::window::CursorGrabMode::Confined)
-            .unwrap();
-
-        window.set_cursor_visible(false);
-
-        WindowContext {
-            event_loop,
-            window: Arc::new(window),
-        }
-    }
-}
-
-struct SurfaceContext {
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
-}
-
-impl SurfaceContext {
-    fn new() -> Self {
-        Self {
-            surface: None,
-            config: None,
-        }
-    }
-    fn init(&mut self, context: &GpuContext, window: Arc<Window>) {
-        let size = window.inner_size();
-
-        let surface = context.instance.create_surface(window).unwrap();
-
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
-            desired_maximum_frame_latency: 2,
-            alpha_mode: CompositeAlphaMode::Auto,
-            view_formats: vec![],
-        };
-
-        self.surface = Some(surface);
-        self.config = Some(config);
-    }
-
-    fn get(&self) -> Option<&wgpu::Surface> {
-        self.surface.as_ref()
-    }
-
-    fn config(&self) -> &wgpu::SurfaceConfiguration {
-        self.config.as_ref().unwrap()
-    }
-
-    fn configure(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        let config = self.config.as_mut().unwrap();
-        config.width = width;
-        config.height = height;
-
-        self.surface.as_ref().unwrap().configure(device, config);
-    }
-}
-
-struct GpuContext {
-    instance: wgpu::Instance,
-    _adapter: wgpu::Adapter,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-}
-
-impl GpuContext {
-    pub fn new(surface: &SurfaceContext) -> GpuContext {
-        let instance = Instance::new(InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let adapter = pollster::block_on(async {
-            instance
-                .request_adapter(&RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::HighPerformance,
-                    compatible_surface: surface.get(),
-                    force_fallback_adapter: false,
-                })
-                .await
-        })
-        .unwrap();
-
-        let (device, queue) = pollster::block_on(async {
-            adapter
-                .request_device(
-                    &DeviceDescriptor {
-                        label: Some("Device"),
-                        required_features: Features::empty(),
-                        required_limits: Limits::default(),
-                    },
-                    None,
-                )
-                .await
-        })
-        .unwrap();
-
-        GpuContext {
-            instance,
-            _adapter: adapter,
-            device,
-            queue,
-        }
-    }
-}
 
 fn main() {
     let window_loop = WindowContext::new();
@@ -313,8 +186,6 @@ fn main() {
         lights,
         skybox,
     };
-
-    window_loop.event_loop.set_control_flow(ControlFlow::Poll);
 
     window_loop
         .event_loop
