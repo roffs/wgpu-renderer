@@ -30,11 +30,16 @@ pub enum PassKind {
 pub struct RenderPasses(HashMap<PassKind, Box<dyn RenderPass>>);
 
 impl RenderPasses {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> RenderPasses {
-        let model_pass = ModelRenderPass::new(device, config, layouts, 2); //TODO remove hardcoded num. of lights.
-        let skybox_render_pass = SkyboxRenderPass::new(device, config, layouts);
-
+    pub fn new(
+        device: &Device,
+        config: &SurfaceConfiguration,
+        layouts: &Layouts,
+        scene: &Scene,
+    ) -> RenderPasses {
         let mut render_passes: HashMap<PassKind, Box<dyn RenderPass>> = HashMap::new();
+
+        let model_pass = ModelRenderPass::new(device, config, layouts, scene.lights.len());
+        let skybox_render_pass = SkyboxRenderPass::new(device, config, layouts);
 
         render_passes.insert(PassKind::Model, Box::new(model_pass));
         render_passes.insert(PassKind::Skybox, Box::new(skybox_render_pass));

@@ -15,7 +15,7 @@ use crate::{
     light::PointLight,
     material::Material,
     model::{Mesh, Model},
-    render_pass::{self, RenderPasses},
+    render_pass::{PassKind, RenderPasses},
     resources::Resources,
     scene::Scene,
     skybox::Skybox,
@@ -175,7 +175,7 @@ impl App {
             skybox,
         };
 
-        let render_passes = RenderPasses::new(&context.device, surface.config(), &layouts);
+        let render_passes = RenderPasses::new(&context.device, surface.config(), &layouts, &scene);
 
         App {
             _layouts: layouts,
@@ -245,8 +245,8 @@ impl App {
     pub fn render(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, view: &TextureView) {
         self.camera_controller.update(&mut self.camera);
 
-        let model_pass = self.render_passes.get(&render_pass::PassKind::Model);
-        let skybox_pass = self.render_passes.get(&render_pass::PassKind::Skybox);
+        let model_pass = self.render_passes.get(&PassKind::Model);
+        let skybox_pass = self.render_passes.get(&PassKind::Skybox);
 
         skybox_pass.draw(device, queue, view, &self.camera, &self.scene);
         model_pass.draw(device, queue, view, &self.camera, &self.scene);
