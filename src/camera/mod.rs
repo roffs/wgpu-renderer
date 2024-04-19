@@ -3,17 +3,6 @@ use cgmath::{perspective, Angle, Deg, Matrix4, Point3, Rad, Vector3};
 
 pub use camera_controller::CameraController;
 
-pub struct CameraDescriptor<T: Into<cgmath::Rad<f32>>> {
-    pub position: (f32, f32, f32),
-    pub yaw: T,
-    pub pitch: T,
-
-    pub fovy: f32,
-    pub aspect: f32,
-    pub near: f32,
-    pub far: f32,
-}
-
 pub struct Camera {
     pub(self) position: Point3<f32>,
     pub(self) yaw: Rad<f32>,
@@ -31,17 +20,16 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new<T: Into<cgmath::Rad<f32>>>(camera_descriptor: CameraDescriptor<T>) -> Camera {
-        let CameraDescriptor {
-            position,
-            yaw,
-            pitch,
-            fovy,
-            aspect,
-            near,
-            far,
-        } = camera_descriptor;
+    pub fn new<T: Into<cgmath::Rad<f32>>>(
+        position: (f32, f32, f32),
+        yaw: T,
+        pitch: T,
 
+        fovy: f32,
+        aspect: f32,
+        near: f32,
+        far: f32,
+    ) -> Camera {
         let yaw: Rad<f32> = yaw.into();
         let pitch: Rad<f32> = pitch.into();
 

@@ -15,7 +15,7 @@ mod window_context;
 
 use std::path::Path;
 
-use camera::{Camera, CameraController, CameraDescriptor};
+use camera::{Camera, CameraController};
 use cgmath::{Deg, Vector3};
 use gpu_context::GpuContext;
 use layouts::{Layout, Layouts};
@@ -46,15 +46,15 @@ fn main() {
     // CAMERA
 
     let mut camera_controller = CameraController::new(0.1, 0.1);
-    let mut camera = Camera::new(CameraDescriptor {
-        position: (0.0, 1.0, 3.0),
-        yaw: Deg(-90.0),
-        pitch: Deg(0.0),
-        fovy: 45.0,
-        aspect: surface.config().width as f32 / surface.config().height as f32,
-        near: 0.01,
-        far: 100.0,
-    });
+    let mut camera = Camera::new(
+        (0.0, 1.0, 3.0),
+        Deg(-90.0),
+        Deg(0.0),
+        45.0,
+        surface.config().width as f32 / surface.config().height as f32,
+        0.01,
+        100.0,
+    );
 
     //  MODELS
     let transform_matrix = Transform::new(
