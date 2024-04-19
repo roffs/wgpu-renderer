@@ -10,7 +10,7 @@ mod skybox;
 mod texture;
 mod transform;
 
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use camera::{Camera, CameraController, CameraDescriptor};
 use cgmath::{Deg, Vector3};
@@ -24,8 +24,8 @@ use scene::Scene;
 use skybox::Skybox;
 use transform::{Rotation, Transform};
 use wgpu::{
-    Color, CompositeAlphaMode, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor,
-    Limits, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
+    Color, CompositeAlphaMode, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits,
+    RequestAdapterOptions, SurfaceConfiguration, TextureUsages,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -35,26 +35,140 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-fn main() {
-    let event_loop = EventLoop::new().unwrap();
-    let window = WindowBuilder::new()
-        .with_title("WGPU renderer")
-        .with_inner_size(PhysicalSize {
-            width: 1024,
-            height: 768,
+struct WindowContext {
+    event_loop: EventLoop<()>,
+    window: Arc<Window>,
+}
+
+impl WindowContext {
+    pub fn new() -> WindowContext {
+        let event_loop = EventLoop::new().unwrap();
+        let window = WindowBuilder::new()
+            .with_title("WGPU renderer")
+            .with_inner_size(PhysicalSize {
+                width: 1024,
+                height: 768,
+            })
+            .build(&event_loop)
+            .unwrap();
+
+        window
+            .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+            .unwrap();
+
+        window.set_cursor_visible(false);
+
+        WindowContext {
+            event_loop,
+            window: Arc::new(window),
+        }
+    }
+}
+
+struct SurfaceContext {
+    surface: Option<wgpu::Surface<'static>>,
+    config: Option<wgpu::SurfaceConfiguration>,
+}
+
+impl SurfaceContext {
+    fn new() -> Self {
+        Self {
+            surface: None,
+            config: None,
+        }
+    }
+    fn init(&mut self, context: &GpuContext, window: Arc<Window>) {
+        let size = window.inner_size();
+
+        let surface = context.instance.create_surface(window).unwrap();
+
+        let config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
+            desired_maximum_frame_latency: 2,
+            alpha_mode: CompositeAlphaMode::Auto,
+            view_formats: vec![],
+        };
+
+        self.surface = Some(surface);
+        self.config = Some(config);
+    }
+
+    fn get(&self) -> Option<&wgpu::Surface> {
+        self.surface.as_ref()
+    }
+
+    fn config(&self) -> &wgpu::SurfaceConfiguration {
+        self.config.as_ref().unwrap()
+    }
+
+    fn configure(&mut self, device: &wgpu::Device, width: u32, height: u32) {
+        let config = self.config.as_mut().unwrap();
+        config.width = width;
+        config.height = height;
+
+        self.surface.as_ref().unwrap().configure(device, config);
+    }
+}
+
+struct GpuContext {
+    instance: wgpu::Instance,
+    _adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+}
+
+impl GpuContext {
+    pub fn new(surface: &SurfaceContext) -> GpuContext {
+        let instance = Instance::new(InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let adapter = pollster::block_on(async {
+            instance
+                .request_adapter(&RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    compatible_surface: surface.get(),
+                    force_fallback_adapter: false,
+                })
+                .await
         })
-        .build(&event_loop)
         .unwrap();
 
-    window
-        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+        let (device, queue) = pollster::block_on(async {
+            adapter
+                .request_device(
+                    &DeviceDescriptor {
+                        label: Some("Device"),
+                        required_features: Features::empty(),
+                        required_limits: Limits::default(),
+                    },
+                    None,
+                )
+                .await
+        })
         .unwrap();
 
-    window.set_cursor_visible(false);
+        GpuContext {
+            instance,
+            _adapter: adapter,
+            device,
+            queue,
+        }
+    }
+}
 
-    let (device, queue, mut config, surface) = create_graphics_context(&window);
+fn main() {
+    let window_loop = WindowContext::new();
+    let mut surface = SurfaceContext::new();
+    let context = GpuContext::new(&surface);
+    surface.init(&context, window_loop.window.clone());
 
-    let layouts = Layouts::new(&device);
+    let layouts = Layouts::new(&context.device);
 
     // CAMERA
 
@@ -64,15 +178,15 @@ fn main() {
         yaw: Deg(-90.0),
         pitch: Deg(0.0),
         fovy: 45.0,
-        aspect: window.inner_size().width as f32 / window.inner_size().height as f32,
+        aspect: surface.config().width as f32 / surface.config().height as f32,
         near: 0.01,
         far: 100.0,
     });
 
     //  MODELS
     let transform_matrix = Transform::new(
-        &device,
-        &queue,
+        &context.device,
+        &context.queue,
         layouts.get(&Layout::Transform),
         (0.0, 1.0, 0.0),
         Some(Rotation::X(-90.0)),
@@ -80,15 +194,15 @@ fn main() {
     );
 
     let shiba = Resources::load_model(
-        &device,
-        &queue,
+        &context.device,
+        &context.queue,
         layouts.get(&Layout::Material),
         Path::new("./assets/models/shiba/scene.gltf"),
     );
 
     let transform_matrix_2 = Transform::new(
-        &device,
-        &queue,
+        &context.device,
+        &context.queue,
         layouts.get(&Layout::Transform),
         (3.0, 1.0, 0.0),
         Some(Rotation::X(-90.0)),
@@ -96,9 +210,9 @@ fn main() {
     );
 
     let flat_cube = Model {
-        meshes: vec![(Mesh::cube(&device), 0)],
+        meshes: vec![(Mesh::cube(&context.device), 0)],
         materials: vec![Material::new(
-            &device,
+            &context.device,
             layouts.get(&Layout::Material),
             Color {
                 r: 1.0,
@@ -107,8 +221,8 @@ fn main() {
                 a: 1.0,
             },
             Some(Resources::load_texture(
-                &device,
-                &queue,
+                &context.device,
+                &context.queue,
                 Path::new("./assets/textures/test.png"),
             )),
             None,
@@ -116,8 +230,8 @@ fn main() {
     };
 
     let transform_matrix_3 = Transform::new(
-        &device,
-        &queue,
+        &context.device,
+        &context.queue,
         layouts.get(&Layout::Transform),
         (-2.0, 1.0, 0.0),
         Some(Rotation::X(-90.0)),
@@ -125,15 +239,15 @@ fn main() {
     );
 
     let stone_cube = Resources::load_model(
-        &device,
-        &queue,
+        &context.device,
+        &context.queue,
         layouts.get(&Layout::Material),
         Path::new("./assets/models/stone_cube/scene.gltf"),
     );
 
     let floor_transform = Transform::new(
-        &device,
-        &queue,
+        &context.device,
+        &context.queue,
         layouts.get(&Layout::Transform),
         (0.0, 0.0, 0.0),
         None,
@@ -141,9 +255,9 @@ fn main() {
     );
 
     let floor = Model::new(
-        vec![(Mesh::plane(&device), 0)],
+        vec![(Mesh::plane(&context.device), 0)],
         vec![Material::new(
-            &device,
+            &context.device,
             layouts.get(&Layout::Material),
             Color {
                 r: 1.0,
@@ -158,7 +272,8 @@ fn main() {
 
     // MODEL RENDER PASS
 
-    let mut render_passes = RenderPasses::new(&device, &queue, &config, &layouts);
+    let mut render_passes =
+        RenderPasses::new(&context.device, &context.queue, surface.config(), &layouts);
 
     // SKYBOX
 
@@ -171,8 +286,12 @@ fn main() {
         Path::new("./assets/skybox/sky/back.jpg"),
     ];
 
-    let skybox_cubemap = Resources::load_cube_map(&device, &queue, skybox_paths);
-    let skybox = Skybox::new(&device, layouts.get(&Layout::Skybox), &skybox_cubemap);
+    let skybox_cubemap = Resources::load_cube_map(&context.device, &context.queue, skybox_paths);
+    let skybox = Skybox::new(
+        &context.device,
+        layouts.get(&Layout::Skybox),
+        &skybox_cubemap,
+    );
 
     // LIGHT
 
@@ -195,14 +314,15 @@ fn main() {
         skybox,
     };
 
-    event_loop.set_control_flow(ControlFlow::Poll);
+    window_loop.event_loop.set_control_flow(ControlFlow::Poll);
 
-    event_loop
+    window_loop
+        .event_loop
         .run(|event, elwt| match event {
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == window.id() => match event {
+            } if window_id == window_loop.window.id() => match event {
                 WindowEvent::CloseRequested => elwt.exit(),
                 WindowEvent::KeyboardInput {
                     event:
@@ -237,7 +357,7 @@ fn main() {
                 WindowEvent::RedrawRequested => {
                     camera_controller.update(&mut camera);
 
-                    let output = surface.get_current_texture().unwrap();
+                    let output = surface.get().unwrap().get_current_texture().unwrap();
                     let view = output
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
@@ -255,10 +375,7 @@ fn main() {
                     let height = size.height;
 
                     if width > 0 && height > 0 {
-                        config.width = width;
-                        config.height = height;
-
-                        surface.configure(&device, &config);
+                        surface.configure(&context.device, width, height);
 
                         camera.update_aspect(width as f32 / height as f32);
                         render_passes.resize(width, height)
@@ -273,59 +390,8 @@ fn main() {
                 camera_controller.yaw_delta += delta.0 as f32;
                 camera_controller.pitch_delta += delta.1 as f32;
             }
-            Event::AboutToWait => window.request_redraw(),
+            Event::AboutToWait => window_loop.window.request_redraw(),
             _ => {}
         })
         .unwrap();
-}
-
-fn create_graphics_context(window: &Window) -> (Device, Queue, SurfaceConfiguration, Surface) {
-    let instance = Instance::new(InstanceDescriptor {
-        backends: wgpu::Backends::all(),
-        ..Default::default()
-    });
-
-    let surface = instance.create_surface(window).unwrap();
-
-    let adapter = pollster::block_on(async {
-        instance
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
-            .await
-    })
-    .unwrap();
-
-    let (device, queue) = pollster::block_on(async {
-        adapter
-            .request_device(
-                &DeviceDescriptor {
-                    label: Some("Device"),
-                    required_features: Features::empty(),
-                    required_limits: Limits::default(),
-                },
-                None,
-            )
-            .await
-    })
-    .unwrap();
-
-    let size = window.inner_size();
-
-    let config = SurfaceConfiguration {
-        usage: TextureUsages::RENDER_ATTACHMENT,
-        format: wgpu::TextureFormat::Bgra8UnormSrgb,
-        width: size.width,
-        height: size.height,
-        present_mode: wgpu::PresentMode::Fifo,
-        desired_maximum_frame_latency: 2,
-        alpha_mode: CompositeAlphaMode::Auto,
-        view_formats: vec![],
-    };
-
-    surface.configure(&device, &config);
-
-    (device, queue, config, surface)
 }
