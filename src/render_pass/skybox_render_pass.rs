@@ -1,34 +1,32 @@
 use cgmath::Matrix;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages, Device,
-    FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, Queue,
-    RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
+    FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline,
+    SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
     camera::Camera,
     layouts::{Layout, Layouts},
     model::Vertex,
+    scene::Scene,
     skybox::DrawSkybox,
 };
 
 use super::RenderPass;
 
-pub struct SkyboxRenderPass<'a> {
-    device: &'a Device,
-    queue: &'a Queue,
+pub struct SkyboxRenderPass {
     render_pipeline: RenderPipeline,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 }
 
-impl<'a> SkyboxRenderPass<'a> {
+impl SkyboxRenderPass {
     pub fn new(
-        device: &'a Device,
-        queue: &'a Queue,
+        device: &Device,
         config: &SurfaceConfiguration,
         layouts: &Layouts,
-    ) -> SkyboxRenderPass<'a> {
+    ) -> SkyboxRenderPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
@@ -98,8 +96,6 @@ impl<'a> SkyboxRenderPass<'a> {
         });
 
         SkyboxRenderPass {
-            device,
-            queue,
             render_pipeline,
             camera_buffer,
             camera_bind_group,
@@ -107,8 +103,15 @@ impl<'a> SkyboxRenderPass<'a> {
     }
 }
 
-impl<'a> RenderPass for SkyboxRenderPass<'a> {
-    fn draw(&self, view: &TextureView, camera: &Camera, scene: &crate::scene::Scene) {
+impl RenderPass for SkyboxRenderPass {
+    fn draw(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        view: &TextureView,
+        camera: &Camera,
+        scene: &Scene,
+    ) {
         let view_projection = camera.get_projection() * camera.get_rotation();
         let view_projection = unsafe {
             std::slice::from_raw_parts(
@@ -117,14 +120,11 @@ impl<'a> RenderPass for SkyboxRenderPass<'a> {
             )
         };
 
-        self.queue
-            .write_buffer(&self.camera_buffer, 0, view_projection);
+        queue.write_buffer(&self.camera_buffer, 0, view_projection);
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
@@ -149,8 +149,8 @@ impl<'a> RenderPass for SkyboxRenderPass<'a> {
         drop(render_pass);
         let encoder = encoder.finish();
 
-        self.queue.submit(std::iter::once(encoder));
+        queue.submit(std::iter::once(encoder));
     }
 
-    fn resize(&mut self, _width: u32, _height: u32) {}
+    fn resize(&mut self, _device: &wgpu::Device, _width: u32, _height: u32) {}
 }

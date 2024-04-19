@@ -5,13 +5,20 @@ use std::collections::HashMap;
 
 pub use model_render_pass::ModelRenderPass;
 pub use skybox_render_pass::SkyboxRenderPass;
-use wgpu::{Device, Queue, SurfaceConfiguration, TextureView};
+use wgpu::{Device, SurfaceConfiguration, TextureView};
 
 use crate::{camera::Camera, layouts::Layouts, scene::Scene};
 
 pub trait RenderPass {
-    fn draw(&self, view: &TextureView, camera: &Camera, scene: &Scene);
-    fn resize(&mut self, width: u32, height: u32);
+    fn draw(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        view: &TextureView,
+        camera: &Camera,
+        scene: &Scene,
+    );
+    fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32);
 }
 
 #[derive(Eq, PartialEq, Hash)]
@@ -20,18 +27,12 @@ pub enum PassKind {
     Skybox,
 }
 
-pub struct RenderPasses<'a>(HashMap<PassKind, Box<dyn RenderPass + 'a>>);
+pub struct RenderPasses(HashMap<PassKind, Box<dyn RenderPass>>);
 
-impl<'a> RenderPasses<'a> {
-    pub fn new(
-        device: &'a Device,
-        queue: &'a Queue,
-        config: &SurfaceConfiguration,
-        layouts: &Layouts,
-    ) -> RenderPasses<'a> {
-        let model_pass = ModelRenderPass::new(device, queue, config, layouts, 2); //TODO remove hardcoded num. of lights.
-
-        let skybox_render_pass = SkyboxRenderPass::new(device, queue, config, layouts);
+impl RenderPasses {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> RenderPasses {
+        let model_pass = ModelRenderPass::new(device, config, layouts, 2); //TODO remove hardcoded num. of lights.
+        let skybox_render_pass = SkyboxRenderPass::new(device, config, layouts);
 
         let mut render_passes: HashMap<PassKind, Box<dyn RenderPass>> = HashMap::new();
 
@@ -42,13 +43,13 @@ impl<'a> RenderPasses<'a> {
     }
 
     #[allow(clippy::borrowed_box)]
-    pub fn get(&self, kind: &PassKind) -> &Box<dyn RenderPass + 'a> {
+    pub fn get(&self, kind: &PassKind) -> &Box<dyn RenderPass> {
         self.0.get(kind).unwrap()
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
+    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         for pass in self.0.values_mut() {
-            pass.resize(width, height);
+            pass.resize(device, width, height);
         }
     }
 }

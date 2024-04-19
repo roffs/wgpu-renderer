@@ -30,7 +30,7 @@ fn main() {
 
     window_loop
         .event_loop
-        .run(|event, elwt| match event {
+        .run(move |event, elwt| match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
@@ -44,7 +44,7 @@ fn main() {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
-                temp.render(&view);
+                temp.render(&context.device, &context.queue, &view);
 
                 output.present();
             }
@@ -57,7 +57,7 @@ fn main() {
 
                 if width > 0 && height > 0 {
                     surface.configure(&context.device, width, height);
-                    temp.resize(width, height);
+                    temp.resize(&context.device, width, height);
                 }
             }
             Event::AboutToWait => window_loop.window.request_redraw(),

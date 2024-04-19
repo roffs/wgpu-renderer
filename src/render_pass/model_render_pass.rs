@@ -2,8 +2,8 @@ use cgmath::Matrix;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, Queue, RenderPassDepthStencilAttachment,
-    RenderPipeline, StencilState, SurfaceConfiguration, TextureView, VertexState,
+    PipelineLayoutDescriptor, PrimitiveState, RenderPassDepthStencilAttachment, RenderPipeline,
+    StencilState, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
@@ -11,14 +11,13 @@ use crate::{
     layouts::{Layout, Layouts},
     light::PointLight,
     model::{DrawModel, Vertex},
+    scene::Scene,
     texture::Texture,
 };
 
 use super::RenderPass;
 
-pub struct ModelRenderPass<'a> {
-    device: &'a Device,
-    queue: &'a Queue,
+pub struct ModelRenderPass {
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
     camera_buffer: Buffer,
@@ -27,14 +26,13 @@ pub struct ModelRenderPass<'a> {
     light_bind_group: BindGroup,
 }
 
-impl<'a> ModelRenderPass<'a> {
+impl<'a> ModelRenderPass {
     pub fn new(
         device: &'a Device,
-        queue: &'a Queue,
         config: &SurfaceConfiguration,
         layouts: &Layouts,
         lights_num: usize,
-    ) -> ModelRenderPass<'a> {
+    ) -> ModelRenderPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
@@ -137,8 +135,6 @@ impl<'a> ModelRenderPass<'a> {
         });
 
         ModelRenderPass {
-            device,
-            queue,
             render_pipeline,
             depth_texture,
             camera_buffer,
@@ -149,8 +145,15 @@ impl<'a> ModelRenderPass<'a> {
     }
 }
 
-impl<'a> RenderPass for ModelRenderPass<'a> {
-    fn draw(&self, view: &TextureView, camera: &Camera, scene: &crate::scene::Scene) {
+impl RenderPass for ModelRenderPass {
+    fn draw(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        view: &TextureView,
+        camera: &Camera,
+        scene: &Scene,
+    ) {
         let view_projection = camera.get_projection() * camera.get_view();
         let view_projection = unsafe {
             std::slice::from_raw_parts(
@@ -159,8 +162,7 @@ impl<'a> RenderPass for ModelRenderPass<'a> {
             )
         };
 
-        self.queue
-            .write_buffer(&self.camera_buffer, 0, view_projection);
+        queue.write_buffer(&self.camera_buffer, 0, view_projection);
 
         // UPDATE LIGHT BUFFER
 
@@ -171,15 +173,12 @@ impl<'a> RenderPass for ModelRenderPass<'a> {
                 std::slice::from_raw_parts(light as *const PointLight as *const u8, light_size)
             };
 
-            self.queue
-                .write_buffer(&self.light_buffer, (light_size * index) as u64, light_data);
+            queue.write_buffer(&self.light_buffer, (light_size * index) as u64, light_data);
         }
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
@@ -215,11 +214,11 @@ impl<'a> RenderPass for ModelRenderPass<'a> {
         drop(render_pass);
         let encoder = encoder.finish();
 
-        self.queue.submit(std::iter::once(encoder));
+        queue.submit(std::iter::once(encoder));
     }
 
-    fn resize(&mut self, width: u32, height: u32) {
+    fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.depth_texture =
-            Texture::new_depth_texture(self.device, width, height, Some("Depth texture"));
+            Texture::new_depth_texture(device, width, height, Some("Depth texture"));
     }
 }

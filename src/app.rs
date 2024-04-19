@@ -23,19 +23,17 @@ use crate::{
     transform::{Rotation, Transform},
 };
 
-pub struct App<'a> {
+pub struct App {
     _layouts: Layouts,
     camera_controller: CameraController,
     camera: Camera,
     scene: Scene,
-    render_passes: RenderPasses<'a>,
+    render_passes: RenderPasses,
 }
 
-impl<'a> App<'a> {
-    pub fn new(context: &'a GpuContext, surface: &SurfaceContext) -> App<'a> {
+impl App {
+    pub fn new(context: &GpuContext, surface: &SurfaceContext) -> App {
         let layouts = Layouts::new(&context.device);
-        let render_passes =
-            RenderPasses::new(&context.device, &context.queue, surface.config(), &layouts);
 
         // CAMERA
         let camera_controller = CameraController::new(0.1, 0.1);
@@ -176,6 +174,9 @@ impl<'a> App<'a> {
             lights,
             skybox,
         };
+
+        let render_passes = RenderPasses::new(&context.device, surface.config(), &layouts);
+
         App {
             _layouts: layouts,
             render_passes,
@@ -241,18 +242,18 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn render(&mut self, view: &TextureView) {
+    pub fn render(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, view: &TextureView) {
         self.camera_controller.update(&mut self.camera);
 
         let model_pass = self.render_passes.get(&render_pass::PassKind::Model);
         let skybox_pass = self.render_passes.get(&render_pass::PassKind::Skybox);
 
-        skybox_pass.draw(view, &self.camera, &self.scene);
-        model_pass.draw(view, &self.camera, &self.scene);
+        skybox_pass.draw(device, queue, view, &self.camera, &self.scene);
+        model_pass.draw(device, queue, view, &self.camera, &self.scene);
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
+    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.camera.update_aspect(width as f32 / height as f32);
-        self.render_passes.resize(width, height)
+        self.render_passes.resize(device, width, height)
     }
 }
