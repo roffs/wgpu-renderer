@@ -5,14 +5,14 @@ use wgpu::{
 
 use crate::{model::Mesh, texture::CubeMap};
 
-pub struct Skybox<'a> {
-    _cubemap: &'a CubeMap,
+pub struct Skybox {
+    _cubemap: CubeMap,
     mesh: Mesh,
     bind_group: BindGroup,
 }
 
-impl<'a> Skybox<'a> {
-    pub fn new(device: &Device, layout: &BindGroupLayout, cubemap: &'a CubeMap) -> Skybox<'a> {
+impl Skybox {
+    pub fn new(device: &Device, layout: &BindGroupLayout, cubemap: CubeMap) -> Skybox {
         let mesh = Mesh::cube(device);
 
         let bind_group_entry = BindGroupEntry {
