@@ -114,7 +114,7 @@ impl Texture {
         data: &[u8],
         label: Option<&str>,
     ) -> Texture {
-        let texture = Texture::new_normal(device, width, height, label);
+        let texture = Texture::new(device, width, height, label);
         texture.write(queue, data);
 
         texture
