@@ -4,19 +4,13 @@ use wgpu::{
 };
 
 pub struct CubeMap {
+    texture: wgpu::Texture,
     pub view: TextureView,
     pub sampler: Sampler,
 }
 
 impl CubeMap {
-    pub fn new(
-        device: &Device,
-        queue: &Queue,
-        width: u32,
-        height: u32,
-        data: &[u8],
-        label: Option<&str>,
-    ) -> CubeMap {
+    pub fn new(device: &Device, width: u32, height: u32, label: Option<&str>) -> CubeMap {
         let texture_size = Extent3d {
             width,
             height,
@@ -34,22 +28,6 @@ impl CubeMap {
             view_formats: &[],
         });
 
-        queue.write_texture(
-            ImageCopyTextureBase {
-                texture: &texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            data,
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            texture_size,
-        );
-
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::Cube),
             ..Default::default()
@@ -64,6 +42,42 @@ impl CubeMap {
             ..Default::default()
         });
 
-        CubeMap { view, sampler }
+        CubeMap {
+            texture,
+            view,
+            sampler,
+        }
+    }
+
+    pub fn write(&self, queue: &Queue, data: &[u8]) {
+        queue.write_texture(
+            ImageCopyTextureBase {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            data,
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * self.texture.width()),
+                rows_per_image: Some(self.texture.height()),
+            },
+            self.texture.size(),
+        );
+    }
+
+    pub fn new_with_data(
+        device: &Device,
+        queue: &Queue,
+        width: u32,
+        height: u32,
+        data: &[u8],
+        label: Option<&str>,
+    ) -> CubeMap {
+        let texture = CubeMap::new(device, width, height, label);
+        texture.write(queue, data);
+
+        texture
     }
 }

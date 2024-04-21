@@ -203,6 +203,6 @@ impl Resources {
             data.append(&mut image.into_raw());
         }
 
-        CubeMap::new(device, queue, width, height, &data, Some("Cubemap texture"))
+        CubeMap::new_with_data(device, queue, width, height, &data, Some("Cubemap texture"))
     }
 }
