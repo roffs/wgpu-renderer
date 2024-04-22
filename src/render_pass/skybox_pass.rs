@@ -15,18 +15,14 @@ use crate::{
 
 use super::RenderPass;
 
-pub struct SkyboxRenderPass {
+pub struct SkyboxPass {
     render_pipeline: RenderPipeline,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 }
 
-impl SkyboxRenderPass {
-    pub fn new(
-        device: &Device,
-        config: &SurfaceConfiguration,
-        layouts: &Layouts,
-    ) -> SkyboxRenderPass {
+impl SkyboxPass {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> SkyboxPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
@@ -95,7 +91,7 @@ impl SkyboxRenderPass {
             multiview: None,
         });
 
-        SkyboxRenderPass {
+        SkyboxPass {
             render_pipeline,
             camera_buffer,
             camera_bind_group,
@@ -103,7 +99,7 @@ impl SkyboxRenderPass {
     }
 }
 
-impl RenderPass for SkyboxRenderPass {
+impl RenderPass for SkyboxPass {
     fn draw(
         &self,
         device: &wgpu::Device,
