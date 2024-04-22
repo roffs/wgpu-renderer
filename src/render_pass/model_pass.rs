@@ -17,7 +17,7 @@ use crate::{
 
 use super::RenderPass;
 
-pub struct ModelRenderPass {
+pub struct ModelPass {
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
     camera_buffer: Buffer,
@@ -26,13 +26,13 @@ pub struct ModelRenderPass {
     light_bind_group: BindGroup,
 }
 
-impl<'a> ModelRenderPass {
+impl<'a> ModelPass {
     pub fn new(
         device: &'a Device,
         config: &SurfaceConfiguration,
         layouts: &Layouts,
         lights_num: usize,
-    ) -> ModelRenderPass {
+    ) -> ModelPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
@@ -134,7 +134,7 @@ impl<'a> ModelRenderPass {
             multiview: None,
         });
 
-        ModelRenderPass {
+        ModelPass {
             render_pipeline,
             depth_texture,
             camera_buffer,
@@ -145,7 +145,7 @@ impl<'a> ModelRenderPass {
     }
 }
 
-impl RenderPass for ModelRenderPass {
+impl RenderPass for ModelPass {
     fn draw(
         &self,
         device: &wgpu::Device,

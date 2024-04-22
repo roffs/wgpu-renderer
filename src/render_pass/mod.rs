@@ -1,9 +1,9 @@
-mod model_render_pass;
+mod model_pass;
 mod skybox_pass;
 
 use std::collections::HashMap;
 
-pub use model_render_pass::ModelRenderPass;
+pub use model_pass::ModelPass;
 pub use skybox_pass::SkyboxPass;
 use wgpu::{Device, SurfaceConfiguration, TextureView};
 
@@ -38,7 +38,7 @@ impl RenderPasses {
     ) -> RenderPasses {
         let mut render_passes: HashMap<PassKind, Box<dyn RenderPass>> = HashMap::new();
 
-        let model_pass = ModelRenderPass::new(device, config, layouts, scene.lights.len());
+        let model_pass = ModelPass::new(device, config, layouts, scene.lights.len());
         let skybox_render_pass = SkyboxPass::new(device, config, layouts);
 
         render_passes.insert(PassKind::Model, Box::new(model_pass));
