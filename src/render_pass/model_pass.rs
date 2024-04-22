@@ -9,7 +9,7 @@ use wgpu::{
 use crate::{
     camera::Camera,
     layouts::{Layout, Layouts},
-    light::PointLight,
+    light::PointLightRaw,
     model::{DrawModel, Vertex},
     scene::Scene,
     texture::Texture,
@@ -59,7 +59,7 @@ impl<'a> ModelPass {
         });
 
         // LIGHT
-        let light_buffer_size = lights_num * std::mem::size_of::<PointLight>();
+        let light_buffer_size = lights_num * std::mem::size_of::<PointLightRaw>();
 
         let light_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model light buffer"),
@@ -166,11 +166,12 @@ impl RenderPass for ModelPass {
 
         // UPDATE LIGHT BUFFER
 
-        let light_size = std::mem::size_of::<PointLight>();
+        let light_size = std::mem::size_of::<PointLightRaw>();
 
         for (index, light) in scene.lights.iter().enumerate() {
             let light_data = unsafe {
-                std::slice::from_raw_parts(light as *const PointLight as *const u8, light_size)
+                let light = &light.to_raw();
+                std::slice::from_raw_parts(light as *const PointLightRaw as *const u8, light_size)
             };
 
             queue.write_buffer(&self.light_buffer, (light_size * index) as u64, light_data);
