@@ -20,8 +20,8 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new<T: Into<cgmath::Rad<f32>>>(
-        position: (f32, f32, f32),
+    pub fn new<T: Into<Rad<f32>>, U: Into<Point3<f32>>>(
+        position: U,
         yaw: T,
         pitch: T,
 
@@ -30,13 +30,14 @@ impl Camera {
         near: f32,
         far: f32,
     ) -> Camera {
+        let position: Point3<f32> = position.into();
         let yaw: Rad<f32> = yaw.into();
         let pitch: Rad<f32> = pitch.into();
 
         let (look_dir, up, right, forward) = calculate_local_directions(yaw, pitch);
 
         Camera {
-            position: Point3::from(position),
+            position,
             yaw,
             pitch,
             look_dir,
