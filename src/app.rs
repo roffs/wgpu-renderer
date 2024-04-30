@@ -136,8 +136,8 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new((1.0, 5.0, 0.0), (1.0, 1.0, 1.0));
-        let second_light = PointLight::new((-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new(&context.device, (1.0, 5.0, 0.0), (1.0, 1.0, 1.0));
+        let second_light = PointLight::new(&context.device, (-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
 
@@ -247,7 +247,9 @@ impl App {
 
         let model_pass = self.render_passes.get(&PassKind::Model);
         let skybox_pass = self.render_passes.get(&PassKind::Skybox);
+        let shadow_pass = self.render_passes.get(&PassKind::Shadow);
 
+        shadow_pass.draw(device, queue, view, &self.camera, &self.scene);
         skybox_pass.draw(device, queue, view, &self.camera, &self.scene);
         model_pass.draw(device, queue, view, &self.camera, &self.scene);
     }

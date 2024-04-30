@@ -26,9 +26,9 @@ pub struct ModelPass {
     light_bind_group: BindGroup,
 }
 
-impl<'a> ModelPass {
+impl ModelPass {
     pub fn new(
-        device: &'a Device,
+        device: &Device,
         config: &SurfaceConfiguration,
         layouts: &Layouts,
         lights_num: usize,

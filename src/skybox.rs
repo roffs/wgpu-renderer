@@ -20,7 +20,7 @@ impl Skybox {
             resource: wgpu::BindingResource::TextureView(&cubemap.view),
         };
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
+            label: Some("Skybox bind group"),
             layout,
             entries: &[
                 BindGroupEntry {
