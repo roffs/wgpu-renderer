@@ -55,6 +55,8 @@ struct PointLight {
 }
 
 @group(3) @binding(0) var<storage, read> lights: array<PointLight>;
+@group(3) @binding(1) var shadow_maps: binding_array<texture_depth_cube>;
+@group(3) @binding(2) var shadow_maps_samplers:  binding_array<sampler>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
@@ -86,19 +88,39 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var ambient = ambientStrength * vec3f(1.0, 1.0, 1.0);
 
     // DIFFUSE LIGHT
-    
-
     var diffuse = vec3f(0.0, 0.0, 0.0);
 
     for (var i: u32 = 0; i < arrayLength(&lights); i = i + 1 ) {
         var light = lights[i];
-        var lightDir = normalize(lights[i].position - vsout.fragment_position.xyz);
-    
-        var diff = max(dot(normal, lightDir), 0.0);
-        diffuse += diff * light.color;
+
+        var shadow = calc_shadow(vsout, light, shadow_maps[i], shadow_maps_samplers[i]);
+        var diff = calc_diffuse_light(vsout, light, normal);
+        diffuse += (1.0 - shadow) * diff;
     }
 
     var result = vec4f(ambient + diffuse, 1.0) * objectColor;
 
     return result;
+}
+
+
+fn calc_diffuse_light(vsout: VSOut, light: PointLight, normal: vec3f) -> vec3f {
+    var lightDir = normalize(light.position - vsout.fragment_position.xyz);
+    var diff = max(dot(normal, lightDir), 0.0);
+
+    return diff * light.color;
+}
+
+fn calc_shadow(vsout: VSOut, light: PointLight, tex: texture_depth_cube, samp: sampler) -> f32 {
+    var fragToLight: vec3f = vsout.fragment_position.xyz - light.position;
+    var closestDepth: f32 = textureSample(tex, samp, fragToLight);
+    closestDepth *= 25.0; // Get far_plane (25.0) from uniform instead of hardcoded
+
+    var currentDepth = length(fragToLight);  
+
+    var bias = 0.05; 
+    var condition: bool = (currentDepth -  bias) > closestDepth;
+    var shadow = select(0.0, 1.0, condition);
+    
+    return shadow;
 }

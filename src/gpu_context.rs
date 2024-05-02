@@ -34,7 +34,7 @@ impl GpuContext {
                 .request_device(
                     &DeviceDescriptor {
                         label: Some("Device"),
-                        required_features: Features::empty(),
+                        required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                         required_limits: Limits::default(),
                     },
                     None,

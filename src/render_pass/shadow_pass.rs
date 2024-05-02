@@ -63,6 +63,7 @@ impl ShadowPass {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
+                compilation_options: Default::default(),
                 buffers: &[Vertex::desc()],
             },
             fragment: None,

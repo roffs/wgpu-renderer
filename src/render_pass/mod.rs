@@ -42,7 +42,7 @@ impl RenderPasses {
     ) -> RenderPasses {
         let mut render_passes: HashMap<PassKind, Box<dyn RenderPass>> = HashMap::new();
 
-        let model_pass = ModelPass::new(device, config, layouts, scene.lights.len());
+        let model_pass = ModelPass::new(device, config, layouts, &scene.lights);
         let skybox_pass = SkyboxPass::new(device, config, layouts);
         let shadow_pass = ShadowPass::new(device, config, layouts, &scene.lights);
 

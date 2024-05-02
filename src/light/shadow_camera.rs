@@ -16,7 +16,7 @@ impl ShadowCamera {
         up: U,
     ) -> ShadowCamera {
         let view = Matrix4::look_to_rh(position.into(), look_dir.into(), up.into());
-        let projection = perspective(Deg(45.0), 1.0, 0.01, 100.0);
+        let projection = perspective(Deg(90.0), 1.0, 1.0, 25.0);
 
         let data = projection * view;
         let data = unsafe {
