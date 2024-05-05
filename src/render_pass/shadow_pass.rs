@@ -137,10 +137,7 @@ impl RenderPass for ShadowPass {
                             load: wgpu::LoadOp::Clear(1.0),
                             store: wgpu::StoreOp::Store,
                         }),
-                        stencil_ops: Some(Operations {
-                            load: wgpu::LoadOp::Clear(1),
-                            store: wgpu::StoreOp::Store,
-                        }),
+                        stencil_ops: None,
                     }),
                     occlusion_query_set: None,
                     timestamp_writes: None,

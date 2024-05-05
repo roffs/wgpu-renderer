@@ -1,6 +1,6 @@
 use wgpu::{
-    Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler,
-    TextureDescriptor, TextureView,
+    CompareFunction, Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue,
+    Sampler, TextureDescriptor, TextureView,
 };
 
 pub struct CubeMap {
@@ -85,6 +85,7 @@ impl CubeMap {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
+            compare: Some(CompareFunction::LessEqual),
             ..Default::default()
         });
 

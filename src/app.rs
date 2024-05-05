@@ -136,8 +136,8 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new(&context.device, (1.0, 5.0, 0.0), (1.0, 1.0, 1.0));
-        let second_light = PointLight::new(&context.device, (-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new(&context.device, (0.0, 2.5, 0.0), (1.0, 1.0, 1.0));
+        // let second_light = PointLight::new(&context.device, (-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
 
@@ -167,7 +167,7 @@ impl App {
             (floor, floor_transform),
         ];
 
-        let lights = vec![light, second_light];
+        let lights = vec![light];
 
         let scene = Scene {
             entities,
