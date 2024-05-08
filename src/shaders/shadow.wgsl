@@ -23,6 +23,8 @@ fn vs_main(
 
     var vertex_world_position = transform.model * vec4f(vertex.position, 1.0);
     vsout.position = view_projection * vertex_world_position;
+    vsout.position.x *= -1.0;
+    // vsout.position.x += 1.0;
 
     return vsout;
 }

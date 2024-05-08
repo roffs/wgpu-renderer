@@ -27,7 +27,7 @@ impl ShadowCamera {
         };
 
         let view_proj_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Vertex buffer"),
+            label: Some("Shadow camera view projection buffer"),
             contents: data,
             usage: BufferUsages::UNIFORM,
         });

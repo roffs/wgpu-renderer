@@ -9,7 +9,7 @@ use crate::{
     layouts::{Layout, Layouts},
     light::PointLight,
     model::{DrawModel, Vertex},
-    texture::Texture,
+    texture::{CubeMap, Texture},
 };
 
 use super::RenderPass;
@@ -72,7 +72,7 @@ impl ShadowPass {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
-                unclipped_depth: false,
+                unclipped_depth: true,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
@@ -122,6 +122,7 @@ impl RenderPass for ShadowPass {
                                 format!("Light {} shadow view {}", light_index, camera_index)
                                     .as_str(),
                             ),
+                            format: Some(CubeMap::DEPTH_FORMAT),
                             dimension: Some(wgpu::TextureViewDimension::D2),
                             base_array_layer: camera_index as u32,
                             array_layer_count: Some(1),

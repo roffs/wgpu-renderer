@@ -71,11 +71,13 @@ impl CubeMap {
             dimension: wgpu::TextureDimension::D2,
             format: CubeMap::DEPTH_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
+            view_formats: &[CubeMap::DEPTH_FORMAT],
         });
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            format: Some(CubeMap::DEPTH_FORMAT),
             dimension: Some(wgpu::TextureViewDimension::Cube),
+            aspect: wgpu::TextureAspect::DepthOnly,
             ..Default::default()
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {

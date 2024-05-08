@@ -120,12 +120,12 @@ fn calc_shadow(vsout: VSOut, i: u32) -> f32 {
     var fragToLight: vec3f = vsout.fragment_position.xyz - light.position;
     var currentDepth = length(fragToLight);
 
-    var closestDepth: f32 = textureGather(tex, samp, fragToLight).z;
-    closestDepth *= 25.0; // Get far_plane (25.0) from uniform instead of hardcoded
+    var closestDepth: f32 = textureGather(tex, samp, fragToLight).y;
+    closestDepth *= 50.0; // Get far_plane (25.0) from uniform instead of hardcoded
 
-    
-    var bias = 0.05; 
-    var condition: bool = (currentDepth -  bias) > closestDepth;
+
+    var bias = 0.05;    
+    var condition: bool = (currentDepth + bias) > closestDepth;
     var shadow = select(0.0, 1.0, condition);
     
     return shadow;
