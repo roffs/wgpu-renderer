@@ -3,13 +3,13 @@ use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
     PipelineLayoutDescriptor, PrimitiveState, RenderPassDepthStencilAttachment, RenderPipeline,
-    StencilState, SurfaceConfiguration, TextureView, VertexState,
+    Sampler, StencilState, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
     camera::Camera,
     layouts::{Layout, Layouts},
-    light::PointLightRaw,
+    light::{PointLight, PointLightRaw},
     model::{DrawModel, Vertex},
     scene::Scene,
     texture::Texture,
@@ -26,12 +26,12 @@ pub struct ModelPass {
     light_bind_group: BindGroup,
 }
 
-impl<'a> ModelPass {
+impl ModelPass {
     pub fn new(
-        device: &'a Device,
+        device: &Device,
         config: &SurfaceConfiguration,
         layouts: &Layouts,
-        lights_num: usize,
+        lights: &[PointLight],
     ) -> ModelPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -59,7 +59,7 @@ impl<'a> ModelPass {
         });
 
         // LIGHT
-        let light_buffer_size = lights_num * std::mem::size_of::<PointLightRaw>();
+        let light_buffer_size = lights.len() * std::mem::size_of::<PointLightRaw>();
 
         let light_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model light buffer"),
@@ -68,13 +68,33 @@ impl<'a> ModelPass {
             mapped_at_creation: false,
         });
 
+        let view_array = lights
+            .iter()
+            .map(|light| &light.shadow_map.view)
+            .collect::<Vec<&TextureView>>();
+
+        let sampler_array = lights
+            .iter()
+            .map(|light| &light.shadow_map.sampler)
+            .collect::<Vec<&Sampler>>();
+
         let light_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Model light bind group"),
             layout: layouts.get(&Layout::Light),
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: light_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: light_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureViewArray(&view_array),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::SamplerArray(&sampler_array),
+                },
+            ],
         });
 
         // DEPTH TEXTURE

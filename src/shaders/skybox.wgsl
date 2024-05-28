@@ -18,8 +18,7 @@ fn vs_main(
     var vsout: VSOut;
 
     vsout.position = view_projection * vec4f(vertex.position * 2.0, 1.0);
-    vsout.uv = vertex.position;
-    
+    vsout.uv = vertex.position; 
     return vsout;
 }
 
@@ -30,5 +29,6 @@ var sky_texture: texture_cube<f32>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
+
     return textureSample(sky_texture, sky_sampler, vsout.uv);
 }

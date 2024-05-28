@@ -1,4 +1,5 @@
 mod model_pass;
+mod shadow_pass;
 mod skybox_pass;
 
 use std::collections::HashMap;
@@ -8,6 +9,8 @@ pub use skybox_pass::SkyboxPass;
 use wgpu::{Device, SurfaceConfiguration, TextureView};
 
 use crate::{camera::Camera, layouts::Layouts, scene::Scene};
+
+use self::shadow_pass::ShadowPass;
 
 pub trait RenderPass {
     fn draw(
@@ -25,6 +28,7 @@ pub trait RenderPass {
 pub enum PassKind {
     Model,
     Skybox,
+    Shadow,
 }
 
 pub struct RenderPasses(HashMap<PassKind, Box<dyn RenderPass>>);
@@ -38,11 +42,13 @@ impl RenderPasses {
     ) -> RenderPasses {
         let mut render_passes: HashMap<PassKind, Box<dyn RenderPass>> = HashMap::new();
 
-        let model_pass = ModelPass::new(device, config, layouts, scene.lights.len());
-        let skybox_render_pass = SkyboxPass::new(device, config, layouts);
+        let model_pass = ModelPass::new(device, config, layouts, &scene.lights);
+        let skybox_pass = SkyboxPass::new(device, config, layouts);
+        let shadow_pass = ShadowPass::new(device, config, layouts, &scene.lights);
 
         render_passes.insert(PassKind::Model, Box::new(model_pass));
-        render_passes.insert(PassKind::Skybox, Box::new(skybox_render_pass));
+        render_passes.insert(PassKind::Skybox, Box::new(skybox_pass));
+        render_passes.insert(PassKind::Shadow, Box::new(shadow_pass));
 
         RenderPasses(render_passes)
     }

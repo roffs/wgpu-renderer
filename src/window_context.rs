@@ -23,11 +23,11 @@ impl WindowContext {
             .build(&event_loop)
             .unwrap();
 
-        window
-            .set_cursor_grab(winit::window::CursorGrabMode::Confined)
-            .unwrap();
+        // window
+        //     .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+        //     .unwrap();
 
-        window.set_cursor_visible(false);
+        // window.set_cursor_visible(false);
 
         event_loop.set_control_flow(ControlFlow::Poll);
 
