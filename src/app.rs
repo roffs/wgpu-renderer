@@ -38,7 +38,7 @@ impl App {
         // CAMERA
         let camera_controller = CameraController::new(0.1, 0.1);
         let camera = Camera::new(
-            (0.0, 3.5, 0.0),
+            (0.0, 2.0, 3.0),
             Deg(-90.0),
             Deg(0.0),
             45.0,
@@ -156,8 +156,8 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new(&context.device, (0.0, 3.5, 0.0), (1.0, 1.0, 1.0));
-        // let second_light = PointLight::new(&context.device, (-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new(&context.device, (1.0, 4.0, -1.0), (1.0, 1.0, 1.0));
+        let second_light = PointLight::new(&context.device, (-2.5, 5.0, 3.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
 
@@ -187,7 +187,7 @@ impl App {
             (floor, floor_transform),
         ];
 
-        let lights = vec![light];
+        let lights = vec![light, second_light];
 
         let scene = Scene {
             entities,
