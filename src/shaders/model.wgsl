@@ -55,8 +55,8 @@ struct PointLight {
 }
 
 @group(3) @binding(0) var<storage, read> lights: array<PointLight>;
-@group(3) @binding(1) var shadow_maps: binding_array<texture_cube<f32>>;
-@group(3) @binding(2) var shadow_maps_samplers: binding_array<sampler>;
+@group(3) @binding(1) var shadow_maps: binding_array<texture_cube<f32>, 2>;
+@group(3) @binding(2) var shadow_maps_samplers: binding_array<sampler, 2>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
