@@ -39,7 +39,7 @@ impl CubeMap {
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
@@ -71,22 +71,22 @@ impl CubeMap {
             dimension: wgpu::TextureDimension::D2,
             format: CubeMap::DEPTH_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[CubeMap::DEPTH_FORMAT],
+            view_formats: &[],
         });
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             format: Some(CubeMap::DEPTH_FORMAT),
             dimension: Some(wgpu::TextureViewDimension::Cube),
-            aspect: wgpu::TextureAspect::DepthOnly,
             ..Default::default()
         });
+
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
             compare: Some(CompareFunction::LessEqual),
             ..Default::default()
         });

@@ -12,7 +12,7 @@ use crate::{
     camera::{Camera, CameraController},
     gpu_context::GpuContext,
     layouts::{Layout, Layouts},
-    light::{self, PointLight},
+    light::PointLight,
     material::Material,
     model::{Mesh, Model},
     render_pass::{PassKind, RenderPasses},
@@ -38,7 +38,7 @@ impl App {
         // CAMERA
         let camera_controller = CameraController::new(0.1, 0.1);
         let camera = Camera::new(
-            (0.0, 1.0, 3.0),
+            (0.0, 3.5, 0.0),
             Deg(-90.0),
             Deg(0.0),
             45.0,
@@ -68,7 +68,7 @@ impl App {
             &context.device,
             &context.queue,
             layouts.get(&Layout::Transform),
-            (3.0, 1.5, 0.0),
+            (3.0, 1.5, -2.0),
             Some(Rotation::X(-90.0)),
             2.0,
         );
@@ -98,7 +98,7 @@ impl App {
             &context.queue,
             layouts.get(&Layout::Transform),
             (-2.0, 1.5, 1.5),
-            Some(Rotation::X(-90.0)),
+            Some(Rotation::Y(45.0)),
             2.0,
         );
 
@@ -156,7 +156,7 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new(&context.device, (0.0, 2.5, 0.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new(&context.device, (0.0, 3.5, 0.0), (1.0, 1.0, 1.0));
         // let second_light = PointLight::new(&context.device, (-1.0, 1.0, 1.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
@@ -175,7 +175,7 @@ impl App {
         let skybox = Skybox::new(
             &context.device,
             layouts.get(&Layout::Skybox),
-            skybox_cubemap,
+            &light.shadow_map,
         );
 
         // SCENE

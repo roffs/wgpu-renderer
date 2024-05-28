@@ -94,14 +94,16 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
         var light = lights[i];
 
         var shadow = calc_shadow(vsout, i);
-
         var diff = calc_diffuse_light(vsout, light, normal);
-        diffuse += (1.0 - shadow) * diff;
+
+        // diffuse += (1.0 - shadow) * diff;
+        diffuse = vec3f(shadow, shadow, shadow);
     }
 
     var result = vec4f(ambient + diffuse, 1.0) * objectColor;
 
-    return result;
+    // return result;
+    return vec4f(diffuse, 1.0);
 }
 
 
@@ -117,16 +119,38 @@ fn calc_shadow(vsout: VSOut, i: u32) -> f32 {
     let tex = shadow_maps[i];
     let samp = shadow_maps_samplers[i];
 
+    var zFar = 25.0;
+    var zNear = 0.5;
+    var bias = 0.01;
+
     var fragToLight: vec3f = vsout.fragment_position.xyz - light.position;
+
     var currentDepth = length(fragToLight);
+    currentDepth = to_non_linear_depth(currentDepth, zNear, zFar);
 
-    var closestDepth: f32 = textureGather(tex, samp, fragToLight).y;
-    closestDepth *= 50.0; // Get far_plane (25.0) from uniform instead of hardcoded
+    var closestDepth = textureGather(tex, samp, fragToLight).x;
+    // closestDepth = to_linear_depth(closestDepth, zFar, zNear);
+
+    var shadow = select(0.0, 1.0, currentDepth - closestDepth > bias);
 
 
-    var bias = 0.05;    
-    var condition: bool = (currentDepth + bias) > closestDepth;
-    var shadow = select(0.0, 1.0, condition);
+    // var shadow = 1.0 - textureSampleCompare(tex, samp, fragToLight, currentDepth - bias);
+
+    // return abs(currentDepth - closestDepth) * 200.0;
+    return abs(currentDepth - closestDepth);
+}
+
+fn to_non_linear_depth(depth: f32, zNear: f32, zFar: f32) -> f32 {
+    var nonLinearDepth = (zFar + zNear - 2.0 * zNear * zFar / depth) / (zFar - zNear);
+    // nonLinearDepth = (nonLinearDepth + 1.0) / 2.0;
+    return nonLinearDepth;
     
-    return shadow;
+    // return ((-0.5*zFar*zNear) + (zFar*depth) - (0.5*zNear+depth))/((zFar - zNear)*depth);
+    // return (zFar * (depth - zNear)) / (depth*(zFar - zNear));
+}
+
+fn to_linear_depth(depth: f32, zNear: f32, zFar: f32) -> f32 {
+    let z_n: f32 = 2.0 * depth - 1.0;
+    let z_e: f32 = 2.0 * zNear * zFar / (zFar + zNear - depth * (zFar - zNear));
+    return z_e;
 }

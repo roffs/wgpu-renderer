@@ -18,17 +18,18 @@ fn vs_main(
     var vsout: VSOut;
 
     vsout.position = view_projection * vec4f(vertex.position * 2.0, 1.0);
-    vsout.uv = vertex.position; // TODO remove .uv and use .position instead
-    
+    vsout.uv = vertex.position; 
     return vsout;
 }
 
 @group(1) @binding(0) 
 var sky_sampler: sampler;
 @group(1) @binding(1) 
-var sky_texture: texture_cube<f32>;
+var sky_texture: texture_depth_cube;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
-    return textureSample(sky_texture, sky_sampler, vsout.uv);
+
+    var result = textureSample(sky_texture, sky_sampler, vsout.uv);
+    return vec4f(result, result, result, 1.0);
 }

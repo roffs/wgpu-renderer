@@ -6,33 +6,44 @@ use wgpu::{
 use crate::{model::Mesh, texture::CubeMap};
 
 pub struct Skybox {
-    _cubemap: CubeMap,
+    // _cubemap: CubeMap,
     mesh: Mesh,
     bind_group: BindGroup,
 }
 
 impl Skybox {
-    pub fn new(device: &Device, layout: &BindGroupLayout, cubemap: CubeMap) -> Skybox {
+    pub fn new(device: &Device, layout: &BindGroupLayout, cubemap: &CubeMap) -> Skybox {
         let mesh = Mesh::cube(device);
 
         let bind_group_entry = BindGroupEntry {
             binding: 1,
             resource: wgpu::BindingResource::TextureView(&cubemap.view),
         };
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Skybox bind group"),
             layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&cubemap.sampler),
+                    resource: wgpu::BindingResource::Sampler(&sampler),
                 },
                 bind_group_entry,
             ],
         });
 
         Skybox {
-            _cubemap: cubemap,
+            // _cubemap: cubemap,
             mesh,
             bind_group,
         }

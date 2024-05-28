@@ -126,7 +126,7 @@ impl Layouts {
                     binding: 1,
                     visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        sample_type: wgpu::TextureSampleType::Depth,
                         view_dimension: wgpu::TextureViewDimension::Cube,
                         multisampled: false,
                     },

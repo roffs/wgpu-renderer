@@ -1,6 +1,6 @@
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, DepthBiasState, DepthStencilState, Device,
-    MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
+    FragmentState, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
     RenderPassDepthStencilAttachment, RenderPipeline, StencilState, SurfaceConfiguration,
     VertexState,
 };
@@ -22,7 +22,7 @@ pub struct ShadowPass {
 impl ShadowPass {
     pub fn new(
         device: &Device,
-        _config: &SurfaceConfiguration,
+        config: &SurfaceConfiguration,
         layouts: &Layouts,
         lights: &Vec<PointLight>,
     ) -> ShadowPass {
@@ -70,7 +70,7 @@ impl ShadowPass {
             primitive: PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
+                front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back),
                 unclipped_depth: true,
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -83,11 +83,7 @@ impl ShadowPass {
                 stencil: StencilState::default(),
                 bias: DepthBiasState::default(),
             }),
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+            multisample: MultisampleState::default(),
             multiview: None,
         });
 
@@ -112,7 +108,7 @@ impl RenderPass for ShadowPass {
         });
 
         for (light_index, light) in scene.lights.iter().enumerate() {
-            for (camera_index, camera) in light.shadow_cameras.iter().enumerate() {
+            for camera_index in 0..light.shadow_cameras.len() {
                 let shadow_map_view =
                     light
                         .shadow_map
