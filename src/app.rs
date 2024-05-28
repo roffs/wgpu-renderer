@@ -175,7 +175,7 @@ impl App {
         let skybox = Skybox::new(
             &context.device,
             layouts.get(&Layout::Skybox),
-            &light.shadow_map,
+            &skybox_cubemap,
         );
 
         // SCENE

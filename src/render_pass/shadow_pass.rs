@@ -1,6 +1,6 @@
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, DepthBiasState, DepthStencilState, Device,
-    FragmentState, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, Color, DepthBiasState, DepthStencilState,
+    Device, FragmentState, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
     RenderPassDepthStencilAttachment, RenderPipeline, StencilState, SurfaceConfiguration,
     VertexState,
 };
@@ -9,13 +9,14 @@ use crate::{
     layouts::{Layout, Layouts},
     light::PointLight,
     model::{DrawModel, Vertex},
-    texture::{CubeMap, Texture},
+    texture::Texture,
 };
 
 use super::RenderPass;
 
 pub struct ShadowPass {
     pipeline: RenderPipeline,
+    depth_texture: Texture,
     shadow_bind_groups: Vec<BindGroup>,
 }
 
@@ -63,6 +64,9 @@ impl ShadowPass {
             push_constant_ranges: &[],
         });
 
+        // DEPTH TEXTURE
+        let depth_texture = Texture::new_depth_texture(device, 1024, 1024, Some("Depth texture"));
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render pipeline"),
             layout: Some(&pipeline_layout),
@@ -72,7 +76,16 @@ impl ShadowPass {
                 compilation_options: Default::default(),
                 buffers: &[Vertex::desc()],
             },
-            fragment: None,
+            fragment: Some(FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
             primitive: PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
@@ -95,6 +108,7 @@ impl ShadowPass {
 
         ShadowPass {
             pipeline,
+            depth_texture,
             shadow_bind_groups,
         }
     }
@@ -124,7 +138,6 @@ impl RenderPass for ShadowPass {
                                 format!("Light {} shadow view {}", light_index, camera_index)
                                     .as_str(),
                             ),
-                            format: Some(CubeMap::DEPTH_FORMAT),
                             dimension: Some(wgpu::TextureViewDimension::D2),
                             base_array_layer: camera_index as u32,
                             array_layer_count: Some(1),
@@ -133,9 +146,16 @@ impl RenderPass for ShadowPass {
 
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Shadow map render Pass"),
-                    color_attachments: &[],
-                    depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &shadow_map_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(Color::WHITE),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                        view: &self.depth_texture.view,
                         depth_ops: Some(Operations {
                             load: wgpu::LoadOp::Clear(1.0),
                             store: wgpu::StoreOp::Store,

@@ -55,7 +55,7 @@ struct PointLight {
 }
 
 @group(3) @binding(0) var<storage, read> lights: array<PointLight>;
-@group(3) @binding(1) var shadow_maps: binding_array<texture_depth_cube>;
+@group(3) @binding(1) var shadow_maps: binding_array<texture_cube<f32>>;
 @group(3) @binding(2) var shadow_maps_samplers: binding_array<sampler>;
 
 @fragment 
@@ -96,14 +96,11 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
         var shadow = calc_shadow(vsout, i);
         var diff = calc_diffuse_light(vsout, light, normal);
 
-        // diffuse += (1.0 - shadow) * diff;
-        diffuse = vec3f(shadow, shadow, shadow);
+        diffuse += (1.0 - shadow) * diff;
     }
 
     var result = vec4f(ambient + diffuse, 1.0) * objectColor;
-
-    // return result;
-    return vec4f(diffuse, 1.0);
+    return result;
 }
 
 
@@ -125,32 +122,10 @@ fn calc_shadow(vsout: VSOut, i: u32) -> f32 {
 
     var fragToLight: vec3f = vsout.fragment_position.xyz - light.position;
 
-    var currentDepth = length(fragToLight);
-    currentDepth = to_non_linear_depth(currentDepth, zNear, zFar);
+    var currentDepth = length(fragToLight) / zFar;
 
-    var closestDepth = textureGather(tex, samp, fragToLight).x;
-    // closestDepth = to_linear_depth(closestDepth, zFar, zNear);
+    var closestDepth = textureSample(tex, samp, fragToLight).r;
 
     var shadow = select(0.0, 1.0, currentDepth - closestDepth > bias);
-
-
-    // var shadow = 1.0 - textureSampleCompare(tex, samp, fragToLight, currentDepth - bias);
-
-    // return abs(currentDepth - closestDepth) * 200.0;
-    return abs(currentDepth - closestDepth);
-}
-
-fn to_non_linear_depth(depth: f32, zNear: f32, zFar: f32) -> f32 {
-    var nonLinearDepth = (zFar + zNear - 2.0 * zNear * zFar / depth) / (zFar - zNear);
-    // nonLinearDepth = (nonLinearDepth + 1.0) / 2.0;
-    return nonLinearDepth;
-    
-    // return ((-0.5*zFar*zNear) + (zFar*depth) - (0.5*zNear+depth))/((zFar - zNear)*depth);
-    // return (zFar * (depth - zNear)) / (depth*(zFar - zNear));
-}
-
-fn to_linear_depth(depth: f32, zNear: f32, zFar: f32) -> f32 {
-    let z_n: f32 = 2.0 * depth - 1.0;
-    let z_e: f32 = 2.0 * zNear * zFar / (zFar + zNear - depth * (zFar - zNear));
-    return z_e;
+    return shadow;
 }

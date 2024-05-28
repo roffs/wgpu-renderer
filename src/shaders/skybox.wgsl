@@ -25,11 +25,10 @@ fn vs_main(
 @group(1) @binding(0) 
 var sky_sampler: sampler;
 @group(1) @binding(1) 
-var sky_texture: texture_depth_cube;
+var sky_texture: texture_cube<f32>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
 
-    var result = textureSample(sky_texture, sky_sampler, vsout.uv);
-    return vec4f(result, result, result, 1.0);
+    return textureSample(sky_texture, sky_sampler, vsout.uv);
 }
