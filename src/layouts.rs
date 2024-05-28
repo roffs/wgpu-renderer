@@ -11,6 +11,7 @@ pub enum Layout {
     Material,
     Light,
     Skybox,
+    ShadowCubeMap,
 }
 
 pub struct Layouts(HashMap<Layout, wgpu::BindGroupLayout>);
@@ -31,6 +32,32 @@ impl Layouts {
                 },
                 count: None,
             }],
+        });
+
+        let shadow_cube_map_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Shadow cubemap bind group layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
         });
 
         let material_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -139,6 +166,7 @@ impl Layouts {
         layouts.insert(Layout::Material, material_layout);
         layouts.insert(Layout::Light, light_layout);
         layouts.insert(Layout::Skybox, skybox_layout);
+        layouts.insert(Layout::ShadowCubeMap, shadow_cube_map_layout);
 
         Layouts(layouts)
     }

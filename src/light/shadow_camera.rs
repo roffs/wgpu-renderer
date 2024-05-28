@@ -5,7 +5,8 @@ use wgpu::{
 };
 
 pub struct ShadowCamera {
-    pub view_proj_buffer: Buffer,
+    pub view_buffer: Buffer,
+    pub proj_buffer: Buffer,
 }
 
 impl ShadowCamera {
@@ -15,24 +16,45 @@ impl ShadowCamera {
         look_dir: U,
         up: U,
     ) -> ShadowCamera {
-        let view = Matrix4::look_to_rh(position.into(), look_dir.into(), up.into());
-        let projection = perspective(Deg(90.0), 1.0, 0.5, 25.0);
-        let invert_x_axis = Matrix4::from_nonuniform_scale(-1.0, 1.0, 1.0); // Correcting the reflection direction as we are viewing the skybox from the inside
+        let view: Matrix4<f32> = Matrix4::look_to_rh(position.into(), look_dir.into(), up.into());
+        let projection: Matrix4<f32> = perspective(Deg(90.0), 1.0, 0.5, 25.0);
+        let invert_x_axis: Matrix4<f32> = Matrix4::from_nonuniform_scale(-1.0, 1.0, 1.0); // Correcting the reflection direction as we are viewing the skybox from the inside
 
-        let data = invert_x_axis * projection * view;
-        let data = unsafe {
-            std::slice::from_raw_parts(
-                data.as_ptr() as *const u8,
-                std::mem::size_of::<Matrix4<f32>>(),
-            )
+        let view_buffer = {
+            let data = view;
+            let data = unsafe {
+                std::slice::from_raw_parts(
+                    data.as_ptr() as *const u8,
+                    std::mem::size_of::<Matrix4<f32>>(),
+                )
+            };
+
+            device.create_buffer_init(&BufferInitDescriptor {
+                label: Some("Shadow camera view projection buffer"),
+                contents: data,
+                usage: BufferUsages::UNIFORM,
+            })
         };
 
-        let view_proj_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Shadow camera view projection buffer"),
-            contents: data,
-            usage: BufferUsages::UNIFORM,
-        });
+        let proj_buffer = {
+            let data = invert_x_axis * projection;
+            let data = unsafe {
+                std::slice::from_raw_parts(
+                    data.as_ptr() as *const u8,
+                    std::mem::size_of::<Matrix4<f32>>(),
+                )
+            };
 
-        ShadowCamera { view_proj_buffer }
+            device.create_buffer_init(&BufferInitDescriptor {
+                label: Some("Shadow camera view projection buffer"),
+                contents: data,
+                usage: BufferUsages::UNIFORM,
+            })
+        };
+
+        ShadowCamera {
+            view_buffer,
+            proj_buffer,
+        }
     }
 }

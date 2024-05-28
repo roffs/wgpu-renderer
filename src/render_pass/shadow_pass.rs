@@ -37,11 +37,17 @@ impl ShadowPass {
             for shadow_camera in &light.shadow_cameras {
                 let shadow_bind_group = device.create_bind_group(&BindGroupDescriptor {
                     label: Some("Shadow bind group"),
-                    layout: layouts.get(&Layout::Transform),
-                    entries: &[BindGroupEntry {
-                        binding: 0,
-                        resource: shadow_camera.view_proj_buffer.as_entire_binding(),
-                    }],
+                    layout: layouts.get(&Layout::ShadowCubeMap),
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: shadow_camera.view_buffer.as_entire_binding(),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: shadow_camera.proj_buffer.as_entire_binding(),
+                        },
+                    ],
                 });
 
                 shadow_bind_groups.push(shadow_bind_group);
@@ -51,7 +57,7 @@ impl ShadowPass {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[
-                layouts.get(&Layout::Transform),
+                layouts.get(&Layout::ShadowCubeMap),
                 layouts.get(&Layout::Transform),
             ],
             push_constant_ranges: &[],
