@@ -113,39 +113,31 @@ impl Resources {
                 let positions = reader.read_positions().unwrap();
                 let uvs = reader.read_tex_coords(0).map(|v| v.into_f32()).unwrap();
                 let normals = reader.read_normals().unwrap();
-                let tangents = reader.read_tangents();
+                let mut tangents = reader.read_tangents();
 
-                match tangents {
-                    Some(tangents) => positions.zip(uvs).zip(normals).zip(tangents).for_each(
-                        |(((pos, uv), normal), tangent)| {
-                            let normal: Vector3<f32> = normal.into();
-                            let tangent: Vector3<f32> = [tangent[0], tangent[1], tangent[2]].into();
-                            let bitangent = normal.cross(tangent);
+                positions
+                    .zip(uvs)
+                    .zip(normals)
+                    .for_each(|((pos, uv), normal)| {
+                        let normal: Vector3<f32> = normal.into();
 
-                            mesh_vertices.push(Vertex::new(
-                                pos.into(),
-                                uv.into(),
-                                normal.into(),
-                                tangent.into(),
-                                bitangent.into(),
-                            ));
-                        },
-                    ),
-                    None => positions
-                        .zip(uvs)
-                        .zip(normals)
-                        .for_each(|((pos, uv), normal)| {
-                            let normal: Vector3<f32> = normal.into();
+                        let tangent = tangents
+                            .as_mut()
+                            .and_then(|ts| ts.next().map(|t| (t[0], t[1], t[2])));
 
-                            mesh_vertices.push(Vertex::new(
-                                pos.into(),
-                                uv.into(),
-                                normal.into(),
-                                (0.0, 0.0, 0.0),
-                                (0.0, 0.0, 0.0),
-                            ));
-                        }),
-                }
+                        let bitangent = tangent.map(|t| {
+                            let bt = normal.cross(Vector3::from(t));
+                            (bt[0], bt[1], bt[2])
+                        });
+
+                        mesh_vertices.push(Vertex::new(
+                            pos.into(),
+                            uv.into(),
+                            normal.into(),
+                            tangent,
+                            bitangent,
+                        ));
+                    });
 
                 // Read vertex indices
                 let indices = reader.read_indices().unwrap();

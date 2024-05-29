@@ -5,8 +5,8 @@ pub struct Vertex {
     position: (f32, f32, f32),
     uv: (f32, f32),
     normal: (f32, f32, f32),
-    tangent: (f32, f32, f32),
-    bitangent: (f32, f32, f32),
+    tangent: Option<(f32, f32, f32)>,
+    bitangent: Option<(f32, f32, f32)>,
 }
 
 impl<'a> Vertex {
@@ -14,8 +14,8 @@ impl<'a> Vertex {
         position: (f32, f32, f32),
         uv: (f32, f32),
         normal: (f32, f32, f32),
-        tangent: (f32, f32, f32),
-        bitangent: (f32, f32, f32),
+        tangent: Option<(f32, f32, f32)>,
+        bitangent: Option<(f32, f32, f32)>,
     ) -> Vertex {
         Vertex {
             position,
