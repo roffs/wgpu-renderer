@@ -98,36 +98,36 @@ impl App {
             &context.queue,
             layouts.get(&Layout::Transform),
             (-2.0, 1.5, 1.5),
-            Some(Rotation::Y(45.0)),
-            2.0,
+            Some(Rotation::X(-90.0)),
+            1.0,
         );
 
-        // let stone_cube = Resources::load_model(
-        //     &context.device,
-        //     &context.queue,
-        //     layouts.get(&Layout::Material),
-        //     Path::new("./assets/models/stone_cube/scene.gltf"),
-        // );
+        let stone_cube = Resources::load_model(
+            &context.device,
+            &context.queue,
+            layouts.get(&Layout::Material),
+            Path::new("./assets/models/stone_cube/scene.gltf"),
+        );
 
-        let flat_cube2 = Model {
-            meshes: vec![(Mesh::cube(&context.device), 0)],
-            materials: vec![Material::new(
-                &context.device,
-                layouts.get(&Layout::Material),
-                Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 1.0,
-                },
-                Some(Resources::load_texture(
-                    &context.device,
-                    &context.queue,
-                    Path::new("./assets/textures/test.png"),
-                )),
-                None,
-            )],
-        };
+        // let flat_cube2 = Model {
+        //     meshes: vec![(Mesh::cube(&context.device), 0)],
+        //     materials: vec![Material::new(
+        //         &context.device,
+        //         layouts.get(&Layout::Material),
+        //         Color {
+        //             r: 1.0,
+        //             g: 1.0,
+        //             b: 1.0,
+        //             a: 1.0,
+        //         },
+        //         Some(Resources::load_texture(
+        //             &context.device,
+        //             &context.queue,
+        //             Path::new("./assets/textures/test.png"),
+        //         )),
+        //         None,
+        //     )],
+        // };
 
         let floor_transform = Transform::new(
             &context.device,
@@ -183,7 +183,7 @@ impl App {
         let entities = vec![
             (shiba, transform_matrix),
             (flat_cube, transform_matrix_2),
-            (flat_cube2, transform_matrix_3),
+            (stone_cube, transform_matrix_3),
             (floor, floor_transform),
         ];
 
