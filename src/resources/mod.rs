@@ -111,33 +111,32 @@ impl Resources {
 
                 // Read vertex attributes
                 let positions = reader.read_positions().unwrap();
-                let uvs = reader.read_tex_coords(0).map(|v| v.into_f32()).unwrap();
-                let normals = reader.read_normals().unwrap();
+                let mut uvs = reader.read_tex_coords(0).map(|v| v.into_f32());
+                let mut normals = reader.read_normals();
                 let mut tangents = reader.read_tangents();
 
-                positions
-                    .zip(uvs)
-                    .zip(normals)
-                    .for_each(|((pos, uv), normal)| {
-                        let normal: Vector3<f32> = normal.into();
+                positions.for_each(|pos| {
+                    let uv = uvs
+                        .as_mut()
+                        .and_then(|uvs| uvs.next().map(|uv| (uv[0], uv[1])))
+                        .unwrap();
 
-                        let tangent = tangents
-                            .as_mut()
-                            .and_then(|ts| ts.next().map(|t| (t[0], t[1], t[2])));
+                    let normal = normals
+                        .as_mut()
+                        .and_then(|ns| ns.next().map(|n| (n[0], n[1], n[2])))
+                        .unwrap();
 
-                        let bitangent = tangent.map(|t| {
-                            let bt = normal.cross(Vector3::from(t));
-                            (bt[0], bt[1], bt[2])
-                        });
+                    let tangent = tangents
+                        .as_mut()
+                        .and_then(|ts| ts.next().map(|t| (t[0], t[1], t[2])));
 
-                        mesh_vertices.push(Vertex::new(
-                            pos.into(),
-                            uv.into(),
-                            normal.into(),
-                            tangent,
-                            bitangent,
-                        ));
+                    let bitangent = tangent.map(|t| {
+                        let bt = Vector3::from(normal).cross(Vector3::from(t));
+                        bt.into()
                     });
+
+                    mesh_vertices.push(Vertex::new(pos.into(), uv, normal, tangent, bitangent));
+                });
 
                 // Read vertex indices
                 let indices = reader.read_indices().unwrap();
