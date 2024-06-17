@@ -1,4 +1,4 @@
-mod primitives;
+mod shapes;
 mod vertex;
 
 use wgpu::{
