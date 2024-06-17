@@ -8,7 +8,7 @@ use wgpu::{
 
 use crate::{
     camera::Camera,
-    layouts::{Layout, Layouts},
+    layouts::Layouts,
     light::{PointLight, PointLightRaw},
     model::{DrawModel, Vertex},
     scene::Scene,
@@ -51,7 +51,7 @@ impl ModelPass {
 
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Model camera bind group"),
-            layout: layouts.get(&Layout::Transform),
+            layout: &layouts.transform,
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: camera_buffer.as_entire_binding(),
@@ -80,7 +80,7 @@ impl ModelPass {
 
         let light_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Model light bind group"),
-            layout: layouts.get(&Layout::Light),
+            layout: &layouts.light,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
@@ -105,10 +105,10 @@ impl ModelPass {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[
-                layouts.get(&Layout::Transform),
-                layouts.get(&Layout::Transform),
-                layouts.get(&Layout::Material),
-                layouts.get(&Layout::Light),
+                &layouts.transform,
+                &layouts.transform,
+                &layouts.material,
+                &layouts.light,
             ],
             push_constant_ranges: &[],
         });

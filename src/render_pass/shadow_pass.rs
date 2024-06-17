@@ -6,7 +6,7 @@ use wgpu::{
 };
 
 use crate::{
-    layouts::{Layout, Layouts},
+    layouts::Layouts,
     light::PointLight,
     model::{DrawModel, Vertex},
     texture::Texture,
@@ -38,7 +38,7 @@ impl ShadowPass {
             for shadow_camera in &light.shadow_cameras {
                 let shadow_bind_group = device.create_bind_group(&BindGroupDescriptor {
                     label: Some("Shadow bind group"),
-                    layout: layouts.get(&Layout::ShadowCubeMap),
+                    layout: &layouts.shadow_cube_map,
                     entries: &[
                         BindGroupEntry {
                             binding: 0,
@@ -57,10 +57,7 @@ impl ShadowPass {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
-            bind_group_layouts: &[
-                layouts.get(&Layout::ShadowCubeMap),
-                layouts.get(&Layout::Transform),
-            ],
+            bind_group_layouts: &[&layouts.shadow_cube_map, &layouts.transform],
             push_constant_ranges: &[],
         });
 

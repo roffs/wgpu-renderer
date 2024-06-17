@@ -11,7 +11,7 @@ use winit::{
 use crate::{
     camera::{Camera, CameraController},
     gpu_context::GpuContext,
-    layouts::{Layout, Layouts},
+    layouts::Layouts,
     light::PointLight,
     material::Material,
     model::{Mesh, Model},
@@ -55,7 +55,7 @@ impl App {
         let transform_matrix = Transform::new(
             device,
             queue,
-            layouts.get(&Layout::Transform),
+            &layouts.transform,
             (0.0, 1.0, 0.0),
             Some(Rotation::X(-90.0)),
             1.0,
@@ -64,14 +64,14 @@ impl App {
         let shiba = Resources::load_model(
             device,
             queue,
-            layouts.get(&Layout::Material),
+            &layouts.material,
             Path::new("./assets/models/shiba/scene.gltf"),
         );
 
         let transform_matrix_2 = Transform::new(
             device,
             queue,
-            layouts.get(&Layout::Transform),
+            &layouts.transform,
             (3.0, 1.5, -2.0),
             Some(Rotation::X(-90.0)),
             2.0,
@@ -81,7 +81,7 @@ impl App {
             meshes: vec![(Mesh::cube(device), 0)],
             materials: vec![Material::new(
                 device,
-                layouts.get(&Layout::Material),
+                &layouts.material,
                 Color {
                     r: 1.0,
                     g: 1.0,
@@ -100,7 +100,7 @@ impl App {
         let transform_matrix_3 = Transform::new(
             device,
             queue,
-            layouts.get(&Layout::Transform),
+            &layouts.transform,
             (-2.0, 1.5, 1.5),
             Some(Rotation::X(-90.0)),
             1.0,
@@ -109,14 +109,14 @@ impl App {
         let stone_cube = Resources::load_model(
             device,
             queue,
-            layouts.get(&Layout::Material),
+            &layouts.material,
             Path::new("./assets/models/stone_cube/scene.gltf"),
         );
 
         let floor_transform = Transform::new(
             device,
             queue,
-            layouts.get(&Layout::Transform),
+            &layouts.transform,
             (0.0, 0.0, 0.0),
             None,
             10.0,
@@ -126,7 +126,7 @@ impl App {
             vec![(Mesh::plane(device), 0)],
             vec![Material::new(
                 device,
-                layouts.get(&Layout::Material),
+                &layouts.material,
                 Color {
                     r: 1.0,
                     g: 0.4,
@@ -155,7 +155,7 @@ impl App {
         ];
 
         let skybox_cubemap = Resources::load_cube_map(device, queue, skybox_paths);
-        let skybox = Skybox::new(device, layouts.get(&Layout::Skybox), &skybox_cubemap);
+        let skybox = Skybox::new(device, &layouts.skybox, &skybox_cubemap);
 
         // SCENE
 

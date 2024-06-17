@@ -1,26 +1,21 @@
-use std::{collections::HashMap, num::NonZeroU32};
+use std::num::NonZeroU32;
 
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, Device,
-    SamplerBindingType, ShaderStages,
+    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
+    BufferBindingType, Device, SamplerBindingType, ShaderStages,
 };
 
-#[derive(Eq, PartialEq, Hash)]
-pub enum Layout {
-    Transform,
-    Material,
-    Light,
-    Skybox,
-    ShadowCubeMap,
+pub struct Layouts {
+    pub transform: BindGroupLayout,
+    pub shadow_cube_map: BindGroupLayout,
+    pub material: BindGroupLayout,
+    pub light: BindGroupLayout,
+    pub skybox: BindGroupLayout,
 }
-
-pub struct Layouts(HashMap<Layout, wgpu::BindGroupLayout>);
 
 impl Layouts {
     pub fn new(device: &Device) -> Layouts {
-        let mut layouts = HashMap::new();
-
-        let transform_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let transform = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Transform bind group layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
@@ -34,7 +29,7 @@ impl Layouts {
             }],
         });
 
-        let shadow_cube_map_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let shadow_cube_map = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Shadow cubemap bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
@@ -60,7 +55,7 @@ impl Layouts {
             ],
         });
 
-        let material_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let material = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Material bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
@@ -108,7 +103,7 @@ impl Layouts {
             ],
         });
 
-        let light_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let light = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Light bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
@@ -140,7 +135,7 @@ impl Layouts {
             ],
         });
 
-        let skybox_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let skybox = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Skybox bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
@@ -162,16 +157,12 @@ impl Layouts {
             ],
         });
 
-        layouts.insert(Layout::Transform, transform_layout);
-        layouts.insert(Layout::Material, material_layout);
-        layouts.insert(Layout::Light, light_layout);
-        layouts.insert(Layout::Skybox, skybox_layout);
-        layouts.insert(Layout::ShadowCubeMap, shadow_cube_map_layout);
-
-        Layouts(layouts)
-    }
-
-    pub fn get(&self, layout: &Layout) -> &wgpu::BindGroupLayout {
-        self.0.get(layout).unwrap()
+        Layouts {
+            transform,
+            shadow_cube_map,
+            material,
+            light,
+            skybox,
+        }
     }
 }

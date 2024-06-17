@@ -5,13 +5,7 @@ use wgpu::{
     SurfaceConfiguration, TextureView, VertexState,
 };
 
-use crate::{
-    camera::Camera,
-    layouts::{Layout, Layouts},
-    model::Vertex,
-    scene::Scene,
-    skybox::DrawSkybox,
-};
+use crate::{camera::Camera, layouts::Layouts, model::Vertex, scene::Scene, skybox::DrawSkybox};
 
 use super::RenderPass;
 
@@ -39,7 +33,7 @@ impl SkyboxPass {
 
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Skybox camera bind group"),
-            layout: layouts.get(&Layout::Transform),
+            layout: &layouts.transform,
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: camera_buffer.as_entire_binding(),
@@ -49,10 +43,7 @@ impl SkyboxPass {
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Skybox pipeline layout"),
-            bind_group_layouts: &[
-                layouts.get(&Layout::Transform),
-                layouts.get(&Layout::Skybox),
-            ],
+            bind_group_layouts: &[&layouts.transform, &layouts.skybox],
             push_constant_ranges: &[],
         });
 
