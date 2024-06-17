@@ -15,7 +15,7 @@ use crate::{
     light::PointLight,
     material::Material,
     model::{Mesh, Model},
-    render_pass::{PassKind, RenderPasses},
+    render_pass::{ModelPass, RenderPass, ShadowPass, SkyboxPass},
     resources::Resources,
     scene::Scene,
     skybox::Skybox,
@@ -28,12 +28,16 @@ pub struct App {
     camera_controller: CameraController,
     camera: Camera,
     scene: Scene,
-    render_passes: RenderPasses,
+    model_pass: ModelPass,
+    skybox_pass: SkyboxPass,
+    shadow_pass: ShadowPass,
 }
 
 impl App {
     pub fn new(context: &GpuContext, surface: &SurfaceContext) -> App {
-        let layouts = Layouts::new(&context.device);
+        let GpuContext { device, queue, .. } = context;
+
+        let layouts = Layouts::new(device);
 
         // CAMERA
         let camera_controller = CameraController::new(0.1, 0.1);
@@ -49,8 +53,8 @@ impl App {
 
         // MODELS
         let transform_matrix = Transform::new(
-            &context.device,
-            &context.queue,
+            device,
+            queue,
             layouts.get(&Layout::Transform),
             (0.0, 1.0, 0.0),
             Some(Rotation::X(-90.0)),
@@ -58,15 +62,15 @@ impl App {
         );
 
         let shiba = Resources::load_model(
-            &context.device,
-            &context.queue,
+            device,
+            queue,
             layouts.get(&Layout::Material),
             Path::new("./assets/models/shiba/scene.gltf"),
         );
 
         let transform_matrix_2 = Transform::new(
-            &context.device,
-            &context.queue,
+            device,
+            queue,
             layouts.get(&Layout::Transform),
             (3.0, 1.5, -2.0),
             Some(Rotation::X(-90.0)),
@@ -74,9 +78,9 @@ impl App {
         );
 
         let flat_cube = Model {
-            meshes: vec![(Mesh::cube(&context.device), 0)],
+            meshes: vec![(Mesh::cube(device), 0)],
             materials: vec![Material::new(
-                &context.device,
+                device,
                 layouts.get(&Layout::Material),
                 Color {
                     r: 1.0,
@@ -85,8 +89,8 @@ impl App {
                     a: 1.0,
                 },
                 Some(Resources::load_texture(
-                    &context.device,
-                    &context.queue,
+                    device,
+                    queue,
                     Path::new("./assets/textures/test.png"),
                 )),
                 None,
@@ -94,8 +98,8 @@ impl App {
         };
 
         let transform_matrix_3 = Transform::new(
-            &context.device,
-            &context.queue,
+            device,
+            queue,
             layouts.get(&Layout::Transform),
             (-2.0, 1.5, 1.5),
             Some(Rotation::X(-90.0)),
@@ -103,35 +107,15 @@ impl App {
         );
 
         let stone_cube = Resources::load_model(
-            &context.device,
-            &context.queue,
+            device,
+            queue,
             layouts.get(&Layout::Material),
             Path::new("./assets/models/stone_cube/scene.gltf"),
         );
 
-        // let flat_cube2 = Model {
-        //     meshes: vec![(Mesh::cube(&context.device), 0)],
-        //     materials: vec![Material::new(
-        //         &context.device,
-        //         layouts.get(&Layout::Material),
-        //         Color {
-        //             r: 1.0,
-        //             g: 1.0,
-        //             b: 1.0,
-        //             a: 1.0,
-        //         },
-        //         Some(Resources::load_texture(
-        //             &context.device,
-        //             &context.queue,
-        //             Path::new("./assets/textures/test.png"),
-        //         )),
-        //         None,
-        //     )],
-        // };
-
         let floor_transform = Transform::new(
-            &context.device,
-            &context.queue,
+            device,
+            queue,
             layouts.get(&Layout::Transform),
             (0.0, 0.0, 0.0),
             None,
@@ -139,9 +123,9 @@ impl App {
         );
 
         let floor = Model::new(
-            vec![(Mesh::plane(&context.device), 0)],
+            vec![(Mesh::plane(device), 0)],
             vec![Material::new(
-                &context.device,
+                device,
                 layouts.get(&Layout::Material),
                 Color {
                     r: 1.0,
@@ -156,8 +140,8 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new(&context.device, (1.0, 4.0, -1.0), (1.0, 1.0, 1.0));
-        let second_light = PointLight::new(&context.device, (-2.5, 5.0, 3.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new(device, (1.0, 4.0, -1.0), (1.0, 1.0, 1.0));
+        let second_light = PointLight::new(device, (-2.5, 5.0, 3.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
 
@@ -170,13 +154,8 @@ impl App {
             Path::new("./assets/skybox/sky/back.jpg"),
         ];
 
-        let skybox_cubemap =
-            Resources::load_cube_map(&context.device, &context.queue, skybox_paths);
-        let skybox = Skybox::new(
-            &context.device,
-            layouts.get(&Layout::Skybox),
-            &skybox_cubemap,
-        );
+        let skybox_cubemap = Resources::load_cube_map(device, queue, skybox_paths);
+        let skybox = Skybox::new(device, layouts.get(&Layout::Skybox), &skybox_cubemap);
 
         // SCENE
 
@@ -195,14 +174,18 @@ impl App {
             skybox,
         };
 
-        let render_passes = RenderPasses::new(&context.device, surface.config(), &layouts, &scene);
+        let model_pass = ModelPass::new(device, surface.config(), &layouts, &scene.lights);
+        let skybox_pass = SkyboxPass::new(device, surface.config(), &layouts);
+        let shadow_pass = ShadowPass::new(device, surface.config(), &layouts, &scene.lights);
 
         App {
             _layouts: layouts,
-            render_passes,
             camera_controller,
             camera,
             scene,
+            model_pass,
+            skybox_pass,
+            shadow_pass,
         }
     }
 
@@ -265,17 +248,18 @@ impl App {
     pub fn render(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, view: &TextureView) {
         self.camera_controller.update(&mut self.camera);
 
-        let model_pass = self.render_passes.get(&PassKind::Model);
-        let skybox_pass = self.render_passes.get(&PassKind::Skybox);
-        let shadow_pass = self.render_passes.get(&PassKind::Shadow);
-
-        shadow_pass.draw(device, queue, view, &self.camera, &self.scene);
-        skybox_pass.draw(device, queue, view, &self.camera, &self.scene);
-        model_pass.draw(device, queue, view, &self.camera, &self.scene);
+        self.shadow_pass
+            .draw(device, queue, view, &self.camera, &self.scene);
+        self.skybox_pass
+            .draw(device, queue, view, &self.camera, &self.scene);
+        self.model_pass
+            .draw(device, queue, view, &self.camera, &self.scene);
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.camera.update_aspect(width as f32 / height as f32);
-        self.render_passes.resize(device, width, height)
+
+        self.skybox_pass.resize(device, width, height);
+        self.model_pass.resize(device, width, height);
     }
 }
