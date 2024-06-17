@@ -128,14 +128,18 @@ impl Resources {
 
                     let tangent = tangents
                         .as_mut()
-                        .and_then(|ts| ts.next().map(|t| (t[0], t[1], t[2])));
+                        .and_then(|ts| ts.next().map(|t| (t[0], t[1], t[2])))
+                        .unwrap_or((0.0, 0.0, 0.0));
 
-                    let bitangent = tangent.map(|t| {
-                        let bt = Vector3::from(normal).cross(Vector3::from(t));
-                        bt.into()
-                    });
+                    let bitangent = Vector3::from(normal).cross(Vector3::from(tangent));
 
-                    mesh_vertices.push(Vertex::new(pos.into(), uv, normal, tangent, bitangent));
+                    mesh_vertices.push(Vertex::new(
+                        pos.into(),
+                        uv,
+                        normal,
+                        tangent,
+                        bitangent.into(),
+                    ));
                 });
 
                 // Read vertex indices
