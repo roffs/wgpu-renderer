@@ -10,7 +10,7 @@ pub struct Mesh {
 }
 
 pub trait DrawMesh<'a> {
-    fn draw_mesh(&mut self, node: &'a Mesh, materials: &'a [Material]);
+    fn draw_mesh(&mut self, mesh: &'a Mesh, materials: &'a [Material]);
 }
 
 impl<'a> DrawMesh<'a> for RenderPass<'a> {

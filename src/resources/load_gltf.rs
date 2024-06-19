@@ -4,7 +4,7 @@ use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use wgpu::{BindGroupLayout, Color, Device, Queue};
 
 use crate::{
-    entity::{EmptyNode, Entity, Geometry, Mesh, MeshNode, Node, Vertex},
+    entity::{Entity, Geometry, Mesh, Node, Vertex},
     material::Material,
 };
 
@@ -83,31 +83,21 @@ impl Resources {
         node: GltfNode,
         materials: &Vec<Material>,
         buffers: &Vec<Vec<u8>>,
-    ) -> Box<dyn Node> {
-        let mut children = vec![];
+    ) -> Node {
+        let children = node
+            .children()
+            .map(|c| Resources::load_node(device, c, materials, buffers))
+            .collect();
 
-        for node in node.children() {
-            children.push(Resources::load_node(device, node, materials, buffers));
-        }
+        let mesh = node
+            .mesh()
+            .map(|m| Resources::load_mesh(device, &m, materials, buffers));
 
-        if let Some(mesh) = node.mesh() {
-            let mesh = Resources::load_mesh(device, &mesh, materials, buffers);
-
-            return Box::new(MeshNode {
-                mesh,
-                transform: None,
-                children,
-            });
-        };
-
-        if let Some(_camera) = node.camera() {
-            todo!("Implement camera node")
-        }
-
-        Box::new(EmptyNode {
+        Node {
+            mesh,
             transform: None,
             children,
-        })
+        }
     }
 
     fn load_mesh(

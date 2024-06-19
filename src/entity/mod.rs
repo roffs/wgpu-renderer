@@ -12,12 +12,12 @@ use wgpu::RenderPass;
 use crate::material::Material;
 
 pub struct Entity {
-    nodes: Vec<Box<dyn Node>>,
+    nodes: Vec<Node>,
     materials: Vec<Material>,
 }
 
 impl Entity {
-    pub fn new(nodes: Vec<Box<dyn Node>>, materials: Vec<Material>) -> Entity {
+    pub fn new(nodes: Vec<Node>, materials: Vec<Material>) -> Entity {
         Entity { nodes, materials }
     }
 }
@@ -29,7 +29,7 @@ pub trait DrawEntity<'a> {
 impl<'a> DrawEntity<'a> for RenderPass<'a> {
     fn draw_entity(&mut self, entity: &'a Entity) {
         for node in &entity.nodes {
-            self.draw_node(node.as_ref(), &entity.materials);
+            self.draw_node(node, &entity.materials);
         }
     }
 }
