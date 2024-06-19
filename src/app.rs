@@ -10,7 +10,7 @@ use winit::{
 
 use crate::{
     camera::{Camera, CameraController},
-    entity::{Entity, Geometry, Mesh, Node},
+    entity::{Entity, Geometry, Mesh, MeshNode},
     gpu_context::GpuContext,
     layouts::Layouts,
     light::PointLight,
@@ -78,13 +78,13 @@ impl App {
         );
 
         let flat_cube = Entity::new(
-            vec![Node::Mesh {
+            vec![Box::new(MeshNode {
                 mesh: Mesh {
                     primitives: vec![(Geometry::cube(device), 0)],
                 },
                 transform: None,
                 children: Vec::new(),
-            }],
+            })],
             vec![Material::new(
                 device,
                 &layouts.material,
@@ -129,13 +129,13 @@ impl App {
         );
 
         let floor = Entity::new(
-            vec![Node::Mesh {
+            vec![Box::new(MeshNode {
                 mesh: Mesh {
                     primitives: vec![(Geometry::plane(device), 0)],
                 },
                 transform: None,
                 children: Vec::new(),
-            }],
+            })],
             vec![Material::new(
                 device,
                 &layouts.material,

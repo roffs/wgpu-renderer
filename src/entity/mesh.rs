@@ -1,8 +1,8 @@
 use wgpu::RenderPass;
 
 use crate::{
-    material::Material,
     entity::{DrawGeometry, Geometry},
+    material::Material,
 };
 
 pub struct Mesh {

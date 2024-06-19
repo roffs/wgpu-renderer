@@ -4,18 +4,18 @@ use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use wgpu::{BindGroupLayout, Color, Device, Queue};
 
 use crate::{
-    entity::{Entity, Geometry, Mesh, Node, Vertex},
+    entity::{EmptyNode, Entity, Geometry, Mesh, MeshNode, Node, Vertex},
     material::Material,
 };
 
 use super::Resources;
 
 impl Resources {
-    pub fn load_gltf<'a>(
-        device: &'a Device,
-        queue: &'a Queue,
-        layout: &'a BindGroupLayout,
-        path: &'a Path,
+    pub fn load_gltf(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        path: &Path,
     ) -> Entity {
         let current_directory = path.parent().unwrap();
 
@@ -83,7 +83,7 @@ impl Resources {
         node: GltfNode,
         materials: &Vec<Material>,
         buffers: &Vec<Vec<u8>>,
-    ) -> Node {
+    ) -> Box<dyn Node> {
         let mut children = vec![];
 
         for node in node.children() {
@@ -93,21 +93,21 @@ impl Resources {
         if let Some(mesh) = node.mesh() {
             let mesh = Resources::load_mesh(device, &mesh, materials, buffers);
 
-            return Node::Mesh {
+            return Box::new(MeshNode {
                 mesh,
                 transform: None,
                 children,
-            };
+            });
         };
 
         if let Some(_camera) = node.camera() {
             todo!("Implement camera node")
         }
 
-        Node::Empty {
+        Box::new(EmptyNode {
             transform: None,
             children,
-        }
+        })
     }
 
     fn load_mesh(
