@@ -5,7 +5,7 @@ use wgpu::{
     SurfaceConfiguration, TextureView, VertexState,
 };
 
-use crate::{camera::Camera, layouts::Layouts, model::Vertex, scene::Scene, skybox::DrawSkybox};
+use crate::{camera::Camera, entity::Vertex, layouts::Layouts, scene::Scene, skybox::DrawSkybox};
 
 use super::RenderPass;
 

@@ -6,7 +6,10 @@ use wgpu::{
 };
 
 use crate::{
-    layouts::Layouts, light::PointLight, model::Vertex, resources::DrawEntity, texture::Texture,
+    entity::{DrawEntity, Vertex},
+    layouts::Layouts,
+    light::PointLight,
+    texture::Texture,
 };
 
 use super::RenderPass;

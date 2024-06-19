@@ -3,7 +3,7 @@ use wgpu::{
     RenderPass,
 };
 
-use crate::{model::Geometry, texture::CubeMap};
+use crate::{entity::Geometry, texture::CubeMap};
 
 pub struct Skybox {
     geometry: Geometry,

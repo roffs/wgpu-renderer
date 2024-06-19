@@ -8,10 +8,9 @@ use wgpu::{
 
 use crate::{
     camera::Camera,
+    entity::{DrawEntity, Vertex},
     layouts::Layouts,
     light::{PointLight, PointLightRaw},
-    model::Vertex,
-    resources::DrawEntity,
     scene::Scene,
     texture::Texture,
 };

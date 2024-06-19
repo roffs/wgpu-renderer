@@ -10,13 +10,13 @@ use winit::{
 
 use crate::{
     camera::{Camera, CameraController},
+    entity::{Entity, Geometry, Mesh, Node},
     gpu_context::GpuContext,
     layouts::Layouts,
     light::PointLight,
     material::Material,
-    model::Geometry,
     render_pass::{ModelPass, RenderPass, ShadowPass, SkyboxPass},
-    resources::{Entity, Mesh, Node, Resources},
+    resources::Resources,
     scene::Scene,
     skybox::Skybox,
     surface_context::SurfaceContext,

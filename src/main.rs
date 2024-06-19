@@ -1,10 +1,10 @@
 mod app;
 mod camera;
+mod entity;
 mod gpu_context;
 mod layouts;
 mod light;
 mod material;
-mod model;
 mod render_pass;
 mod resources;
 mod scene;

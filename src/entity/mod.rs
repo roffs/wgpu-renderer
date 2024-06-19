@@ -1,8 +1,13 @@
+mod geometry;
+mod mesh;
+mod vertex;
+
+pub use self::{geometry::*, vertex::Vertex};
+use mesh::DrawMesh;
+pub use mesh::Mesh;
 use wgpu::RenderPass;
 
 use crate::{camera::Camera, material::Material, transform::Transform};
-
-use super::temp_mesh::{DrawMesh, Mesh};
 
 pub struct Entity {
     nodes: Vec<Node>,
