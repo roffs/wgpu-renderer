@@ -1,24 +1,30 @@
+mod entity;
+mod temp_mesh;
+
 use std::path::Path;
 
-use cgmath::Vector3;
+use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use image::io::Reader;
+pub use temp_mesh::Mesh;
 use wgpu::{BindGroupLayout, Color, Device, Queue};
 
 use crate::{
     material::Material,
-    model::{Mesh, Model, Vertex},
+    model::{Geometry, Vertex},
     texture::{CubeMap, Texture},
 };
+
+pub use entity::*;
 
 pub struct Resources;
 
 impl Resources {
-    pub fn load_model(
-        device: &Device,
-        queue: &Queue,
-        layout: &BindGroupLayout,
-        path: &Path,
-    ) -> Model {
+    pub fn load_gltf<'a>(
+        device: &'a Device,
+        queue: &'a Queue,
+        layout: &'a BindGroupLayout,
+        path: &'a Path,
+    ) -> Entity {
         let current_directory = path.parent().unwrap();
 
         let file = std::fs::File::open(path).unwrap();
@@ -40,10 +46,138 @@ impl Resources {
         }
 
         // Load materials
-        let mut materials = Vec::new();
+        let mut materials =
+            Resources::load_materials(device, queue, layout, &gltf, current_directory);
 
-        // TODO remove duplication
+        let default_material = Material::new(
+            device,
+            layout,
+            Color {
+                r: 0.4,
+                g: 0.4,
+                b: 0.2,
+                a: 1.0,
+            },
+            None,
+            None,
+        );
 
+        materials.push(default_material); // Put default material at the end of the array
+
+        // Load default scene
+        let default_scene = gltf.default_scene().expect("Default scene not provided!");
+
+        Resources::load_scene(device, default_scene, materials, buffers)
+    }
+
+    fn load_scene(
+        device: &Device,
+        scene: GltfScene,
+        materials: Vec<Material>,
+        buffers: Vec<Vec<u8>>,
+    ) -> Entity {
+        let mut nodes = vec![];
+
+        for node in scene.nodes() {
+            let node = Resources::load_node(device, node, &materials, &buffers);
+            nodes.push(node);
+        }
+
+        Entity::new(nodes, materials)
+    }
+
+    fn load_node(
+        device: &Device,
+        node: GltfNode,
+        materials: &Vec<Material>,
+        buffers: &Vec<Vec<u8>>,
+    ) -> Node {
+        let mut children = vec![];
+
+        for node in node.children() {
+            children.push(Resources::load_node(device, node, materials, buffers));
+        }
+
+        if let Some(mesh) = node.mesh() {
+            let mesh = Resources::load_mesh(device, &mesh, materials, buffers);
+
+            return Node::Mesh {
+                mesh,
+                transform: None,
+                children,
+            };
+        };
+
+        if let Some(_camera) = node.camera() {
+            todo!("Implement camera node")
+        }
+
+        Node::Empty {
+            transform: None,
+            children,
+        }
+    }
+
+    fn load_mesh(
+        device: &Device,
+        mesh: &GltfMesh,
+        materials: &[Material],
+        buffers: &[Vec<u8>],
+    ) -> Mesh {
+        let mut primitives = vec![];
+
+        for primitive in mesh.primitives() {
+            let material_index = match primitive.material().index() {
+                Some(i) => i,
+                None => materials.len() - 1, // Default materials is in the last place of the array
+            };
+
+            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+
+            // Read vertex attributes
+            let positions = reader.read_positions().unwrap().collect::<Vec<_>>();
+            let uvs = reader
+                .read_tex_coords(0)
+                .map(|v| v.into_f32())
+                .unwrap()
+                .collect::<Vec<_>>();
+            let normals = reader.read_normals().unwrap().collect::<Vec<_>>();
+            let tangents = reader
+                .read_tangents()
+                .map(|iter| iter.map(|t| [t[0], t[1], t[2]]).collect::<Vec<_>>());
+
+            let vertices = (0..positions.len())
+                .map(|index| {
+                    let tangent = match &tangents {
+                        Some(t) => t[index],
+                        None => [0.0, 0.0, 0.0],
+                    };
+
+                    Vertex::new(positions[index], uvs[index], normals[index], tangent)
+                })
+                .collect::<Vec<Vertex>>();
+
+            let indices = reader
+                .read_indices()
+                .unwrap()
+                .into_u32()
+                .map(|i| i as u16)
+                .collect();
+            let geometry = Geometry::new(device, vertices, indices);
+
+            primitives.push((geometry, material_index));
+        }
+
+        Mesh { primitives }
+    }
+
+    fn load_materials(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        gltf: &Gltf,
+        current_directory: &Path,
+    ) -> Vec<Material> {
         let load_texture = |texture: &gltf::Texture| match texture.source().source() {
             gltf::image::Source::View { .. } => {
                 todo!()
@@ -63,6 +197,8 @@ impl Resources {
                 Resources::load_normal_texture(device, queue, &path)
             }
         };
+
+        let mut materials = Vec::new();
 
         let load_material = |material: gltf::Material| {
             let diffuse_texture = material
@@ -93,68 +229,7 @@ impl Resources {
             materials.push(material);
         }
 
-        // Load meshes
-        let mut meshes = Vec::new();
-
-        for mesh in gltf.meshes() {
-            let mut mesh_vertices = Vec::new();
-            let mut mesh_indices = Vec::new();
-
-            let mut material_index = 0;
-
-            for primitive in mesh.primitives() {
-                material_index = primitive.material().index().unwrap(); //TODO can we extract this outside of the for loop? We wanna set the material once per mesh
-
-                let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
-
-                // TODO: better error handling if we can not find some attribute or indices
-
-                // Read vertex attributes
-                let positions = reader.read_positions().unwrap();
-                let mut uvs = reader.read_tex_coords(0).map(|v| v.into_f32());
-                let mut normals = reader.read_normals();
-                let mut tangents = reader.read_tangents();
-
-                positions.for_each(|pos| {
-                    let uv = uvs
-                        .as_mut()
-                        .and_then(|uvs| uvs.next().map(|uv| (uv[0], uv[1])))
-                        .unwrap();
-
-                    let normal = normals
-                        .as_mut()
-                        .and_then(|ns| ns.next().map(|n| (n[0], n[1], n[2])))
-                        .unwrap();
-
-                    let tangent = tangents
-                        .as_mut()
-                        .and_then(|ts| ts.next().map(|t| (t[0], t[1], t[2])))
-                        .unwrap_or((0.0, 0.0, 0.0));
-
-                    let bitangent = Vector3::from(normal).cross(Vector3::from(tangent));
-
-                    mesh_vertices.push(Vertex::new(
-                        pos.into(),
-                        uv,
-                        normal,
-                        tangent,
-                        bitangent.into(),
-                    ));
-                });
-
-                // Read vertex indices
-                let indices = reader.read_indices().unwrap();
-                indices
-                    .into_u32()
-                    .for_each(|index| mesh_indices.push(index as u16));
-            }
-
-            meshes.push((
-                Mesh::new(device, &mesh_vertices, &mesh_indices),
-                material_index,
-            ));
-        }
-        Model::new(meshes, materials)
+        materials
     }
 
     pub fn load_texture(device: &Device, queue: &Queue, path: &Path) -> Texture {

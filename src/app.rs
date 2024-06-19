@@ -14,9 +14,9 @@ use crate::{
     layouts::Layouts,
     light::PointLight,
     material::Material,
-    model::{Mesh, Model},
+    model::Geometry,
     render_pass::{ModelPass, RenderPass, ShadowPass, SkyboxPass},
-    resources::Resources,
+    resources::{Entity, Mesh, Node, Resources},
     scene::Scene,
     skybox::Skybox,
     surface_context::SurfaceContext,
@@ -61,7 +61,7 @@ impl App {
             1.0,
         );
 
-        let shiba = Resources::load_model(
+        let shiba = Resources::load_gltf(
             device,
             queue,
             &layouts.material,
@@ -77,9 +77,15 @@ impl App {
             2.0,
         );
 
-        let flat_cube = Model {
-            meshes: vec![(Mesh::cube(device), 0)],
-            materials: vec![Material::new(
+        let flat_cube = Entity::new(
+            vec![Node::Mesh {
+                mesh: Mesh {
+                    primitives: vec![(Geometry::cube(device), 0)],
+                },
+                transform: None,
+                children: Vec::new(),
+            }],
+            vec![Material::new(
                 device,
                 &layouts.material,
                 Color {
@@ -95,7 +101,7 @@ impl App {
                 )),
                 None,
             )],
-        };
+        );
 
         let transform_matrix_3 = Transform::new(
             device,
@@ -106,7 +112,7 @@ impl App {
             1.0,
         );
 
-        let stone_cube = Resources::load_model(
+        let stone_cube = Resources::load_gltf(
             device,
             queue,
             &layouts.material,
@@ -122,8 +128,14 @@ impl App {
             10.0,
         );
 
-        let floor = Model::new(
-            vec![(Mesh::plane(device), 0)],
+        let floor = Entity::new(
+            vec![Node::Mesh {
+                mesh: Mesh {
+                    primitives: vec![(Geometry::plane(device), 0)],
+                },
+                transform: None,
+                children: Vec::new(),
+            }],
             vec![Material::new(
                 device,
                 &layouts.material,

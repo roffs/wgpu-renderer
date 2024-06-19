@@ -1,7 +1,7 @@
-use crate::{light::PointLight, model::Model, skybox::Skybox, transform::Transform};
+use crate::{light::PointLight, resources::Entity, skybox::Skybox, transform::Transform};
 
 pub struct Scene {
-    pub entities: Vec<(Model, Transform)>,
+    pub entities: Vec<(Entity, Transform)>,
     pub lights: Vec<PointLight>,
     pub skybox: Skybox,
 }

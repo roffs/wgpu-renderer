@@ -10,7 +10,8 @@ use crate::{
     camera::Camera,
     layouts::Layouts,
     light::{PointLight, PointLightRaw},
-    model::{DrawModel, Vertex},
+    model::Vertex,
+    resources::DrawEntity,
     scene::Scene,
     texture::Texture,
 };
@@ -229,9 +230,9 @@ impl RenderPass for ModelPass {
         render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
         render_pass.set_bind_group(3, &self.light_bind_group, &[]);
 
-        for (model, transform) in &scene.entities {
+        for (entity, transform) in &scene.entities {
             render_pass.set_bind_group(1, transform, &[]);
-            render_pass.draw_model(model);
+            render_pass.draw_entity(entity);
         }
 
         drop(render_pass);

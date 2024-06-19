@@ -1,28 +1,25 @@
+use cgmath::Vector3;
 use wgpu::{VertexAttribute, VertexBufferLayout};
 
 #[repr(C)]
 pub struct Vertex {
-    position: (f32, f32, f32),
-    uv: (f32, f32),
-    normal: (f32, f32, f32),
-    tangent: (f32, f32, f32),
-    bitangent: (f32, f32, f32),
+    position: [f32; 3],
+    uv: [f32; 2],
+    normal: [f32; 3],
+    tangent: [f32; 3],
+    bitangent: [f32; 3],
 }
 
 impl<'a> Vertex {
-    pub fn new(
-        position: (f32, f32, f32),
-        uv: (f32, f32),
-        normal: (f32, f32, f32),
-        tangent: (f32, f32, f32),
-        bitangent: (f32, f32, f32),
-    ) -> Vertex {
+    pub fn new(position: [f32; 3], uv: [f32; 2], normal: [f32; 3], tangent: [f32; 3]) -> Vertex {
+        let bitangent = Vector3::from(normal).cross(Vector3::from(tangent));
+
         Vertex {
             position,
             uv,
             normal,
             tangent,
-            bitangent,
+            bitangent: bitangent.into(),
         }
     }
 

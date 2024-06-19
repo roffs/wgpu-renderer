@@ -6,10 +6,7 @@ use wgpu::{
 };
 
 use crate::{
-    layouts::Layouts,
-    light::PointLight,
-    model::{DrawModel, Vertex},
-    texture::Texture,
+    layouts::Layouts, light::PointLight, model::Vertex, resources::DrawEntity, texture::Texture,
 };
 
 use super::RenderPass;
@@ -171,9 +168,9 @@ impl RenderPass for ShadowPass {
                     .unwrap();
                 render_pass.set_bind_group(0, shadow_bind_group, &[]);
 
-                for (model, transform) in &scene.entities {
+                for (entity, transform) in &scene.entities {
                     render_pass.set_bind_group(1, transform, &[]);
-                    render_pass.draw_model(model);
+                    render_pass.draw_entity(entity);
                 }
             }
         }
