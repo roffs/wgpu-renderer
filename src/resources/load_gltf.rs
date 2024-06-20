@@ -24,18 +24,7 @@ impl Resources {
         let gltf = gltf::Gltf::from_reader(reader).unwrap();
 
         // Load buffers
-        let mut buffers = Vec::new();
-        for buffer in gltf.buffers() {
-            let buffer_data: Vec<u8> = match buffer.source() {
-                gltf::buffer::Source::Uri(uri) => {
-                    std::fs::read(&current_directory.join(uri)).expect("Failed to load binary")
-                }
-                gltf::buffer::Source::Bin => {
-                    gltf.blob.as_deref().expect("Missing binary blob").into()
-                }
-            };
-            buffers.push(buffer_data);
-        }
+        let buffers = Resources::load_buffers(&gltf, current_directory);
 
         // Load materials
         let mut materials =
@@ -212,5 +201,22 @@ impl Resources {
         }
 
         materials
+    }
+
+    fn load_buffers(gltf: &gltf::Gltf, current_directory: &Path) -> Vec<Vec<u8>> {
+        let mut buffers = Vec::new();
+        for buffer in gltf.buffers() {
+            let buffer_data: Vec<u8> = match buffer.source() {
+                gltf::buffer::Source::Uri(uri) => {
+                    std::fs::read(&current_directory.join(uri)).expect("Failed to load binary")
+                }
+                gltf::buffer::Source::Bin => {
+                    gltf.blob.as_deref().expect("Missing binary blob").into()
+                }
+            };
+            buffers.push(buffer_data);
+        }
+
+        buffers
     }
 }

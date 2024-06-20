@@ -52,23 +52,23 @@ impl App {
         );
 
         // MODELS
-        let transform_matrix = Transform::new(
+        let helmet_transform = Transform::new(
             device,
             queue,
             &layouts.transform,
             (0.0, 1.0, 0.0),
-            Some(Rotation::X(-90.0)),
+            Some(Rotation::X(90.0)),
             1.0,
         );
 
-        let shiba = Resources::load_gltf(
+        let helmet = Resources::load_gltf(
             device,
             queue,
             &layouts.material,
-            Path::new("./assets/models/shiba/scene.gltf"),
+            Path::new("./assets/models/damaged_helmet/DamagedHelmet.gltf"),
         );
 
-        let transform_matrix_2 = Transform::new(
+        let flat_cube_transform = Transform::new(
             device,
             queue,
             &layouts.transform,
@@ -103,11 +103,11 @@ impl App {
             )],
         );
 
-        let transform_matrix_3 = Transform::new(
+        let stone_cube_transform = Transform::new(
             device,
             queue,
             &layouts.transform,
-            (-2.0, 1.5, 1.5),
+            (-3.0, 1.5, 2.5),
             Some(Rotation::X(-90.0)),
             1.0,
         );
@@ -117,6 +117,22 @@ impl App {
             queue,
             &layouts.material,
             Path::new("./assets/models/stone_cube/scene.gltf"),
+        );
+
+        let shiba_transform = Transform::new(
+            device,
+            queue,
+            &layouts.transform,
+            (-2.0, 1.0, -2.0),
+            Some(Rotation::X(-90.0)),
+            1.0,
+        );
+
+        let shiba = Resources::load_gltf(
+            device,
+            queue,
+            &layouts.material,
+            Path::new("./assets/models/shiba/scene.gltf"),
         );
 
         let floor_transform = Transform::new(
@@ -172,10 +188,11 @@ impl App {
         // SCENE
 
         let entities = vec![
-            (shiba, transform_matrix),
-            (flat_cube, transform_matrix_2),
-            (stone_cube, transform_matrix_3),
+            (helmet, helmet_transform),
+            (flat_cube, flat_cube_transform),
+            (stone_cube, stone_cube_transform),
             (floor, floor_transform),
+            (shiba, shiba_transform),
         ];
 
         let lights = vec![light, second_light];
