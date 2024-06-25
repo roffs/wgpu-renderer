@@ -141,7 +141,7 @@ impl App {
             &layouts.transform,
             (0.0, 0.0, 0.0),
             None,
-            10.0,
+            50.0,
         );
 
         let floor = Entity::new(
@@ -155,12 +155,7 @@ impl App {
             vec![Material::new(
                 device,
                 &layouts.material,
-                Color {
-                    r: 1.0,
-                    g: 0.4,
-                    b: 0.2,
-                    a: 1.0,
-                },
+                Color::WHITE,
                 None,
                 None,
             )],
@@ -168,8 +163,9 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new(device, (1.0, 4.0, -1.0), (1.0, 1.0, 1.0));
-        let second_light = PointLight::new(device, (-2.5, 5.0, 3.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new(device, (7.5, 5.0, -4.0), (1.0, 0.0, 0.0));
+        let second_light = PointLight::new(device, (-5.0, 4.0, 10.0), (0.0, 0.0, 1.0));
+        let third_light = PointLight::new(device, (0.0, 5.0, 0.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
 
@@ -195,7 +191,7 @@ impl App {
             (shiba, shiba_transform),
         ];
 
-        let lights = vec![light, second_light];
+        let lights = vec![light, second_light, third_light];
 
         let scene = Scene {
             entities,

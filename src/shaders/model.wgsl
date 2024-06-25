@@ -55,8 +55,8 @@ struct PointLight {
 }
 
 @group(3) @binding(0) var<storage, read> lights: array<PointLight>;
-@group(3) @binding(1) var shadow_maps: binding_array<texture_cube<f32>, 2>;
-@group(3) @binding(2) var shadow_maps_samplers: binding_array<sampler, 2>;
+@group(3) @binding(1) var shadow_maps: binding_array<texture_cube<f32>, 3>;
+@group(3) @binding(2) var shadow_maps_samplers: binding_array<sampler, 3>;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
@@ -95,14 +95,26 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
 
         var shadow = calc_shadow(vsout, i);
         var diff = calc_diffuse_light(vsout, light, normal);
+        var attenuation = calc_attenuation(vsout, light);
 
-        diffuse += (1.0 - shadow) * diff;
+        diffuse += (1.0 - shadow) * diff * attenuation;
     }
 
     var result = vec4f(ambient + diffuse, 1.0) * objectColor;
     return result;
 }
 
+fn calc_attenuation(vsout: VSOut, light: PointLight) -> f32 {
+    var d: f32 = length(light.position - vsout.fragment_position.xyz);
+
+    var constant = 1.0;
+    var linear = 0.09;
+    var quadratic = 0.032;
+
+    var attenuation: f32 = 1.0 / (constant + linear * d + quadratic * (d * d));
+
+    return attenuation;
+}
 
 fn calc_diffuse_light(vsout: VSOut, light: PointLight, normal: vec3f) -> vec3f {
     var lightDir = normalize(light.position - vsout.fragment_position.xyz);

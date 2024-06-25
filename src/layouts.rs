@@ -124,13 +124,13 @@ impl Layouts {
                         view_dimension: wgpu::TextureViewDimension::Cube,
                         multisampled: false,
                     },
-                    count: NonZeroU32::new(2),
+                    count: NonZeroU32::new(3),
                 },
                 BindGroupLayoutEntry {
                     binding: 2,
                     visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: NonZeroU32::new(2),
+                    count: NonZeroU32::new(3),
                 },
             ],
         });
