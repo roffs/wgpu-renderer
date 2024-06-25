@@ -6,6 +6,7 @@ use wgpu::{BindGroupLayout, Color, Device, Queue};
 use crate::{
     entity::{Entity, Geometry, Mesh, Node, Vertex},
     material::Material,
+    texture::TextureType,
 };
 
 use super::Resources;
@@ -149,25 +150,16 @@ impl Resources {
         gltf: &Gltf,
         current_directory: &Path,
     ) -> Vec<Material> {
-        let load_texture = |texture: &gltf::Texture| match texture.source().source() {
-            gltf::image::Source::View { .. } => {
-                todo!()
-            }
-            gltf::image::Source::Uri { uri, .. } => {
-                let path = current_directory.join(uri);
-                Resources::load_texture(device, queue, &path)
-            }
-        };
-
-        let load_normal_texture = |texture: &gltf::Texture| match texture.source().source() {
-            gltf::image::Source::View { .. } => {
-                todo!()
-            }
-            gltf::image::Source::Uri { uri, .. } => {
-                let path = current_directory.join(uri);
-                Resources::load_normal_texture(device, queue, &path)
-            }
-        };
+        let load_texture =
+            |texture: &gltf::Texture, texture_type: TextureType| match texture.source().source() {
+                gltf::image::Source::View { .. } => {
+                    todo!()
+                }
+                gltf::image::Source::Uri { uri, .. } => {
+                    let path = current_directory.join(uri);
+                    Resources::load_texture(device, queue, &path, texture_type)
+                }
+            };
 
         let mut materials = Vec::new();
 
@@ -175,11 +167,11 @@ impl Resources {
             let diffuse_texture = material
                 .pbr_metallic_roughness()
                 .base_color_texture()
-                .map(|diffuse| load_texture(&diffuse.texture()));
+                .map(|diffuse| load_texture(&diffuse.texture(), TextureType::Diffuse));
 
             let normal_texture = material
                 .normal_texture()
-                .map(|normal| load_normal_texture(&normal.texture()));
+                .map(|normal| load_texture(&normal.texture(), TextureType::Normal));
 
             Material::new(
                 device,

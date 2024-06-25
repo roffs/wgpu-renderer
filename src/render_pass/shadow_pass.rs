@@ -9,7 +9,7 @@ use crate::{
     entity::{DrawEntity, Vertex},
     layouts::Layouts,
     light::PointLight,
-    texture::Texture,
+    texture::{Texture, TextureType},
 };
 
 use super::RenderPass;
@@ -62,7 +62,13 @@ impl ShadowPass {
         });
 
         // DEPTH TEXTURE
-        let depth_texture = Texture::new_depth_texture(device, 1024, 1024, Some("Depth texture"));
+        let depth_texture = Texture::new(
+            device,
+            1024,
+            1024,
+            Some("Depth texture"),
+            TextureType::Depth,
+        );
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render pipeline"),

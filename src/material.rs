@@ -3,7 +3,7 @@ use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Color, Device,
 };
 
-use crate::texture::Texture;
+use crate::texture::{Texture, TextureType};
 
 pub struct Material {
     pub base_color: Color,
@@ -38,7 +38,7 @@ impl Material {
             contents: color_data,
         });
 
-        let empty_texture = Texture::new(device, 1, 1, None);
+        let empty_texture = Texture::new(device, 1, 1, None, TextureType::Diffuse);
 
         let texture = match &base_texture {
             Some(texture) => texture,

@@ -20,6 +20,7 @@ use crate::{
     scene::Scene,
     skybox::Skybox,
     surface_context::SurfaceContext,
+    texture::TextureType,
     transform::{Rotation, Transform},
 };
 
@@ -98,6 +99,7 @@ impl App {
                     device,
                     queue,
                     Path::new("./assets/textures/test.png"),
+                    TextureType::Diffuse,
                 )),
                 None,
             )],

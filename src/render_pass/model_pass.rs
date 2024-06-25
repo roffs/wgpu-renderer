@@ -12,7 +12,7 @@ use crate::{
     layouts::Layouts,
     light::{PointLight, PointLightRaw},
     scene::Scene,
-    texture::Texture,
+    texture::{Texture, TextureType},
 };
 
 use super::RenderPass;
@@ -98,8 +98,13 @@ impl ModelPass {
         });
 
         // DEPTH TEXTURE
-        let depth_texture =
-            Texture::new_depth_texture(device, config.width, config.height, Some("Depth texture"));
+        let depth_texture = Texture::new(
+            device,
+            config.width,
+            config.height,
+            Some("Depth texture"),
+            TextureType::Depth,
+        );
 
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -241,7 +246,12 @@ impl RenderPass for ModelPass {
     }
 
     fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        self.depth_texture =
-            Texture::new_depth_texture(device, width, height, Some("Depth texture"));
+        self.depth_texture = Texture::new(
+            device,
+            width,
+            height,
+            Some("Depth texture"),
+            TextureType::Depth,
+        );
     }
 }

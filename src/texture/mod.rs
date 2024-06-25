@@ -7,6 +7,12 @@ use wgpu::{
 
 pub use cubemap::CubeMap;
 
+pub enum TextureType {
+    Diffuse,
+    Normal,
+    Depth,
+}
+
 pub struct Texture {
     texture: wgpu::Texture,
     pub view: TextureView,
@@ -14,13 +20,36 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub const DIFFUSE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+    pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn new(device: &Device, width: u32, height: u32, label: Option<&str>) -> Texture {
+    pub fn new(
+        device: &Device,
+        width: u32,
+        height: u32,
+        label: Option<&str>,
+        texture_type: TextureType,
+    ) -> Texture {
         let size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
+        };
+
+        let (format, usage) = match texture_type {
+            TextureType::Diffuse => (
+                Texture::DIFFUSE_FORMAT,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            ),
+            TextureType::Normal => (
+                Texture::NORMAL_FORMAT,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            ),
+            TextureType::Depth => (
+                Texture::DEPTH_FORMAT,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            ),
         };
 
         let texture = device.create_texture(&TextureDescriptor {
@@ -29,8 +58,8 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            format,
+            usage,
             view_formats: &[],
         });
 
@@ -70,111 +99,18 @@ impl Texture {
         );
     }
 
-    pub fn new_normal(device: &Device, width: u32, height: u32, label: Option<&str>) -> Texture {
-        let size = Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-
-        let texture = device.create_texture(&TextureDescriptor {
-            label,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            address_mode_w: wgpu::AddressMode::Repeat,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        Texture {
-            texture,
-            view,
-            sampler,
-        }
-    }
-
-    pub fn new_with_data(
+    pub fn init(
         device: &Device,
         queue: &Queue,
         width: u32,
         height: u32,
         data: &[u8],
         label: Option<&str>,
+        texture_type: TextureType,
     ) -> Texture {
-        let texture = Texture::new(device, width, height, label);
+        let texture = Texture::new(device, width, height, label, texture_type);
         texture.write(queue, data);
 
         texture
-    }
-
-    pub fn new_normal_with_data(
-        device: &Device,
-        queue: &Queue,
-        width: u32,
-        height: u32,
-        data: &[u8],
-        label: Option<&str>,
-    ) -> Texture {
-        let texture = Texture::new_normal(device, width, height, label);
-        texture.write(queue, data);
-
-        texture
-    }
-
-    pub fn new_depth_texture(
-        device: &Device,
-        width: u32,
-        height: u32,
-        label: Option<&str>,
-    ) -> Texture {
-        let size = Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-
-        let texture = device.create_texture(&TextureDescriptor {
-            label,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: Texture::DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        });
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            compare: Some(wgpu::CompareFunction::LessEqual),
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 100.0,
-            ..Default::default()
-        });
-
-        Texture {
-            texture,
-            view,
-            sampler,
-        }
     }
 }
