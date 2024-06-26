@@ -40,6 +40,7 @@ impl Resources {
             0.0,
             0.0,
             None,
+            None,
         );
 
         materials.push(default_material); // Put default material at the end of the array
@@ -182,6 +183,10 @@ impl Resources {
                 .metallic_roughness_texture()
                 .map(|texture| load_texture(&texture.texture(), TextureType::Diffuse));
 
+            let ambient_occlusion_texture = material
+                .occlusion_texture()
+                .map(|texture| load_texture(&texture.texture(), TextureType::Diffuse));
+
             Material::new(
                 device,
                 layout,
@@ -191,6 +196,7 @@ impl Resources {
                 metallic_factor,
                 roughness_factor,
                 metallic_roughness_texture,
+                ambient_occlusion_texture,
             )
         };
 

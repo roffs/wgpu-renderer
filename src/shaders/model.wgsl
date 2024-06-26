@@ -63,8 +63,10 @@ struct MaterialProperties {
 @group(2) @binding(2) var baseColorTexture: texture_2d<f32>;
 @group(2) @binding(3) var normalSampler: sampler;
 @group(2) @binding(4) var normalTexture: texture_2d<f32>;
-@group(2) @binding(5) var metallicRoughnessTextureSampler: sampler;
-@group(2) @binding(6) var metallicRoughnessTextureTexture: texture_2d<f32>;
+@group(2) @binding(5) var metallicRoughnessSampler: sampler;
+@group(2) @binding(6) var metallicRoughnessTexture: texture_2d<f32>;
+@group(2) @binding(7) var ambientOcclussionSampler: sampler;
+@group(2) @binding(8) var ambientOcclussionTexture: texture_2d<f32>;
 
 struct PointLight {
     @location(0) position: vec3f,
@@ -84,6 +86,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var normal = get_normal(vsout);
     var metalness = get_metalness(vsout.uv);
     var roughness = get_roughness(vsout.uv);
+    var ao = get_ambient_occlussion(vsout.uv);
 
     /// CALCULATE PBR
     var world_position = vsout.world_position.xyz;
@@ -131,12 +134,11 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
         
         // add to outgoing radiance Lo
         var shadow = calc_shadow(vsout, i);
-        Lo += Loi * (1.0 - shadow);  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+        Lo += Loi * (1.0 - shadow);
     }
 
-
     // ambient lighting.
-    var ambient = vec3f(0.03) * albedo; //* ao;
+    var ambient = vec3f(0.05) * albedo * ao;
     
     var color = ambient + Lo;
     return vec4f(color, 1.0);
@@ -185,7 +187,6 @@ fn calc_distribution_GGX(N: vec3f, H: vec3f, a: f32) -> f32 {
     return nom / denom;
 }
 
-
 fn calc_geometry_Schlick_GGX(NdotV: f32, k: f32) -> f32 {
     var nom   = NdotV;
     var denom = NdotV * (1.0 - k) + k;
@@ -205,7 +206,6 @@ fn calc_geometry_Smith(N: vec3f, V: vec3f, L: vec3f, k: f32) -> f32 {
 fn calc_fresnel_Schlick(cosTheta: f32, F0: vec3f) -> vec3f {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
-
 
 fn get_albedo(uv: vec2f) -> vec3f {
      var textureColor: vec4f;
@@ -232,8 +232,8 @@ fn get_normal(vsout: VSOut) -> vec3f {
 
 fn get_metalness(uv: vec2f) -> f32 {
     var metalness: f32;
-    if (textureDimensions(metallicRoughnessTextureTexture).x > 1) {
-        metalness = textureSample(metallicRoughnessTextureTexture, metallicRoughnessTextureSampler, uv).b;
+    if (textureDimensions(metallicRoughnessTexture).x > 1) {
+        metalness = textureSample(metallicRoughnessTexture, metallicRoughnessSampler, uv).b;
     } else {
         metalness = material.metallic_factor;
     }
@@ -242,10 +242,20 @@ fn get_metalness(uv: vec2f) -> f32 {
 
 fn get_roughness(uv: vec2f) -> f32 {
     var roughness: f32;
-    if (textureDimensions(metallicRoughnessTextureTexture).x > 1) {
-        roughness = textureSample(metallicRoughnessTextureTexture, metallicRoughnessTextureSampler, uv).g;
+    if (textureDimensions(metallicRoughnessTexture).x > 1) {
+        roughness = textureSample(metallicRoughnessTexture, metallicRoughnessSampler, uv).g;
     } else {
         roughness = material.roughness_factor;
     }
     return roughness;
+}
+
+fn get_ambient_occlussion(uv: vec2f) -> f32 {
+    var ao: f32;
+    if (textureDimensions(ambientOcclussionTexture).x > 1) {
+        ao = textureSample(ambientOcclussionTexture, ambientOcclussionSampler, uv).g;
+    } else {
+        ao = 1.0;
+    }
+    return ao;
 }

@@ -24,6 +24,7 @@ impl Material {
         metallic_factor: f32,
         roughness_factor: f32,
         metallic_roughness_texture: Option<Texture>,
+        ambient_occlussion_texture: Option<Texture>,
     ) -> Material {
         let uniform = MaterialUniform {
             base_color,
@@ -63,6 +64,11 @@ impl Material {
             None => &empty_texture,
         };
 
+        let ambient_occlussion_texture = match &ambient_occlussion_texture {
+            Some(texture) => texture,
+            None => &empty_texture,
+        };
+
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Material bind group"),
             layout,
@@ -94,6 +100,14 @@ impl Material {
                 BindGroupEntry {
                     binding: 6,
                     resource: wgpu::BindingResource::TextureView(&metallic_roughness_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 7,
+                    resource: wgpu::BindingResource::Sampler(&ambient_occlussion_texture.sampler),
+                },
+                BindGroupEntry {
+                    binding: 8,
+                    resource: wgpu::BindingResource::TextureView(&ambient_occlussion_texture.view),
                 },
             ],
         });
