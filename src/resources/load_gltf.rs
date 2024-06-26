@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
-use wgpu::{BindGroupLayout, Color, Device, Queue};
+use wgpu::{BindGroupLayout, Device, Queue};
 
 use crate::{
     entity::{Entity, Geometry, Mesh, Node, Vertex},
@@ -34,13 +34,11 @@ impl Resources {
         let default_material = Material::new(
             device,
             layout,
-            Color {
-                r: 0.4,
-                g: 0.4,
-                b: 0.2,
-                a: 1.0,
-            },
+            [0.4, 0.4, 0.2, 1.0],
             None,
+            None,
+            0.0,
+            0.0,
             None,
         );
 
@@ -164,8 +162,11 @@ impl Resources {
         let mut materials = Vec::new();
 
         let load_material = |material: gltf::Material| {
-            let diffuse_texture = material
-                .pbr_metallic_roughness()
+            let pbr_metallic_roughness = material.pbr_metallic_roughness();
+
+            let base_color = pbr_metallic_roughness.base_color_factor();
+
+            let diffuse_texture = pbr_metallic_roughness
                 .base_color_texture()
                 .map(|diffuse| load_texture(&diffuse.texture(), TextureType::Diffuse));
 
@@ -173,17 +174,23 @@ impl Resources {
                 .normal_texture()
                 .map(|normal| load_texture(&normal.texture(), TextureType::Normal));
 
+            let metallic_factor = pbr_metallic_roughness.metallic_factor();
+            let roughness_factor = pbr_metallic_roughness.roughness_factor();
+
+            let metallic_roughness_texture = material
+                .pbr_metallic_roughness()
+                .metallic_roughness_texture()
+                .map(|texture| load_texture(&texture.texture(), TextureType::Diffuse));
+
             Material::new(
                 device,
                 layout,
-                Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 1.0,
-                },
+                base_color,
                 diffuse_texture,
                 normal_texture,
+                metallic_factor,
+                roughness_factor,
+                metallic_roughness_texture,
             )
         };
 

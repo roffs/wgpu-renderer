@@ -92,3 +92,25 @@ fn calculate_local_directions(
 
     (look_dir, up, right, forward)
 }
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct CameraUniform {
+    view: Matrix4<f32>,
+    rotation: Matrix4<f32>,
+    projection: Matrix4<f32>,
+    position: [f32; 3],
+    _padding: f32,
+}
+
+impl From<&Camera> for CameraUniform {
+    fn from(camera: &Camera) -> Self {
+        CameraUniform {
+            view: camera.get_view(),
+            rotation: camera.get_rotation(),
+            projection: camera.get_projection(),
+            position: camera.position.into(),
+            _padding: 0.0,
+        }
+    }
+}

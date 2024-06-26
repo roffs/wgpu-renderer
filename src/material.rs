@@ -1,51 +1,64 @@
+use std::ops::Deref;
+
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Color, Device,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device,
 };
 
 use crate::texture::{Texture, TextureType};
 
 pub struct Material {
-    pub base_color: Color,
-    pub base_texture: Option<Texture>,
-
-    pub bind_group: BindGroup,
+    // pub base_color: [f32; 4],
+    // pub base_texture: Option<Texture>,
+    bind_group: BindGroup,
 }
 
 impl Material {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         device: &Device,
         layout: &BindGroupLayout,
-        base_color: Color,
+        base_color: [f32; 4],
         base_texture: Option<Texture>,
         normal_texture: Option<Texture>,
+        metallic_factor: f32,
+        roughness_factor: f32,
+        metallic_roughness_texture: Option<Texture>,
     ) -> Material {
-        let color_data = unsafe {
+        let uniform = MaterialUniform {
+            base_color,
+            metallic_factor,
+            roughness_factor,
+            _padding: 0.0,
+            _padding2: 0.0,
+        };
+
+        let uniform_data = unsafe {
             std::slice::from_raw_parts(
-                &(
-                    base_color.r as f32,
-                    base_color.g as f32,
-                    base_color.b as f32,
-                    base_color.a as f32,
-                ) as *const (f32, f32, f32, f32) as *const u8,
-                std::mem::size_of::<f32>() * 4,
+                &uniform as *const MaterialUniform as *const u8,
+                std::mem::size_of::<MaterialUniform>(),
             )
         };
 
-        let base_color_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Base color buffer"),
+        let material_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Material buffer"),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            contents: color_data,
+            contents: uniform_data,
         });
 
         let empty_texture = Texture::new(device, 1, 1, None, TextureType::Diffuse);
 
-        let texture = match &base_texture {
+        let base_texture = match &base_texture {
             Some(texture) => texture,
             None => &empty_texture,
         };
 
-        let norm_texture = match &normal_texture {
+        let normal_texture = match &normal_texture {
+            Some(texture) => texture,
+            None => &empty_texture,
+        };
+
+        let metallic_roughness_texture = match &metallic_roughness_texture {
             Some(texture) => texture,
             None => &empty_texture,
         };
@@ -56,31 +69,57 @@ impl Material {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: base_color_buffer.as_entire_binding(),
+                    resource: material_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&base_texture.sampler),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                    resource: wgpu::BindingResource::TextureView(&base_texture.view),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&norm_texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&normal_texture.sampler),
                 },
                 BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&norm_texture.view),
+                    resource: wgpu::BindingResource::TextureView(&normal_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&metallic_roughness_texture.sampler),
+                },
+                BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&metallic_roughness_texture.view),
                 },
             ],
         });
 
         Material {
-            base_color,
-            base_texture,
+            // base_color,
+            // base_texture,
             bind_group,
         }
     }
+}
+
+impl Deref for Material {
+    type Target = BindGroup;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bind_group
+    }
+}
+
+#[allow(dead_code)]
+#[repr(C)]
+struct MaterialUniform {
+    base_color: [f32; 4],
+    metallic_factor: f32,
+    _padding: f32,
+    roughness_factor: f32,
+    _padding2: f32,
 }

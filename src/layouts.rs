@@ -6,6 +6,7 @@ use wgpu::{
 };
 
 pub struct Layouts {
+    pub camera: BindGroupLayout,
     pub transform: BindGroupLayout,
     pub shadow_cube_map: BindGroupLayout,
     pub material: BindGroupLayout,
@@ -15,6 +16,19 @@ pub struct Layouts {
 
 impl Layouts {
     pub fn new(device: &Device) -> Layouts {
+        let camera = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Transform bind group layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::all(),
+                ty: BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
         let transform = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Transform bind group layout"),
             entries: &[BindGroupLayoutEntry {
@@ -100,6 +114,22 @@ impl Layouts {
                     },
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -158,6 +188,7 @@ impl Layouts {
         });
 
         Layouts {
+            camera,
             transform,
             shadow_cube_map,
             material,

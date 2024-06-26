@@ -1,4 +1,3 @@
-use cgmath::Matrix;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
@@ -7,7 +6,7 @@ use wgpu::{
 };
 
 use crate::{
-    camera::Camera,
+    camera::{Camera, CameraUniform},
     entity::{DrawEntity, Vertex},
     layouts::Layouts,
     light::{PointLight, PointLightRaw},
@@ -40,7 +39,7 @@ impl ModelPass {
 
         // CAMERA
 
-        let camera_buffer_size = std::mem::size_of::<cgmath::Matrix4<f32>>();
+        let camera_buffer_size = std::mem::size_of::<CameraUniform>();
 
         let camera_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Model camera buffer"),
@@ -51,7 +50,7 @@ impl ModelPass {
 
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Model camera bind group"),
-            layout: &layouts.transform,
+            layout: &layouts.camera,
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: camera_buffer.as_entire_binding(),
@@ -110,7 +109,7 @@ impl ModelPass {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[
-                &layouts.transform,
+                &layouts.camera,
                 &layouts.transform,
                 &layouts.material,
                 &layouts.light,
@@ -181,15 +180,15 @@ impl RenderPass for ModelPass {
         camera: &Camera,
         scene: &Scene,
     ) {
-        let view_projection = camera.get_projection() * camera.get_view();
-        let view_projection = unsafe {
+        let camera_uniform = CameraUniform::from(camera);
+        let camera_uniform = unsafe {
             std::slice::from_raw_parts(
-                view_projection.as_ptr() as *const u8,
-                std::mem::size_of::<cgmath::Matrix4<f32>>(),
+                &camera_uniform as *const CameraUniform as *const u8,
+                std::mem::size_of::<CameraUniform>(),
             )
         };
 
-        queue.write_buffer(&self.camera_buffer, 0, view_projection);
+        queue.write_buffer(&self.camera_buffer, 0, camera_uniform);
 
         // UPDATE LIGHT BUFFER
 
@@ -205,11 +204,11 @@ impl RenderPass for ModelPass {
         }
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
+            label: Some("Model render Encoder"),
         });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
+            label: Some("Model render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
                 resolve_target: None,

@@ -256,7 +256,7 @@ impl<'a> DrawGeometry<'a> for RenderPass<'a> {
         self.set_vertex_buffer(0, primitive.vertex_buffer.slice(..));
         self.set_index_buffer(primitive.index_buffer.slice(..), IndexFormat::Uint16);
 
-        self.set_bind_group(2, &material.bind_group, &[]);
+        self.set_bind_group(2, material, &[]);
         self.draw_indexed(0..primitive.indices.len() as u32, 0, 0..1);
     }
 }

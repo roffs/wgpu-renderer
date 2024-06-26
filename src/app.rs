@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use cgmath::{Deg, Vector3};
-use wgpu::{Color, TextureView};
+use wgpu::TextureView;
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
     event_loop::EventLoopWindowTarget,
@@ -89,18 +89,16 @@ impl App {
             vec![Material::new(
                 device,
                 &layouts.material,
-                Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 1.0,
-                },
+                [1.0, 1.0, 1.0, 1.0],
                 Some(Resources::load_texture(
                     device,
                     queue,
                     Path::new("./assets/textures/test.png"),
                     TextureType::Diffuse,
                 )),
+                None,
+                0.0,
+                0.0,
                 None,
             )],
         );
@@ -157,8 +155,11 @@ impl App {
             vec![Material::new(
                 device,
                 &layouts.material,
-                Color::WHITE,
+                [1.0, 1.0, 1.0, 1.0],
                 None,
+                None,
+                0.0,
+                0.0,
                 None,
             )],
         );
