@@ -44,10 +44,10 @@ fn vs_main(
 
     vsout.position = camera.projection * camera.view * vertex_world_position;
     vsout.uv = vertex.uv;
-    vsout.normal = (transform.normal * vec4f(vertex.normal, 1.0)).xyz;
     vsout.world_position = vertex_world_position;
-    vsout.tangent = vertex.tangent;
-    vsout.bitangent = vertex.bitangent;
+    vsout.normal = normalize((transform.normal * vec4f(vertex.normal, 1.0)).xyz);
+    vsout.tangent = normalize((transform.normal * vec4f(vertex.tangent, 1.0)).xyz);
+    vsout.bitangent = normalize((transform.normal * vec4f(vertex.bitangent, 1.0)).xyz);
     
     return vsout;
 }
@@ -141,7 +141,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var ambient = vec3f(0.05) * albedo * ao;
     
     var color = ambient + Lo;
-    return vec4f(color, 1.0);
+    return vec4f(normal, 1.0);
 }
 
 fn calc_attenuation(vsout: VSOut, light: PointLight) -> f32 {

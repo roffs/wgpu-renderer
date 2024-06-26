@@ -58,7 +58,7 @@ impl App {
             queue,
             &layouts.transform,
             (0.0, 1.0, 0.0),
-            Some(Rotation::X(90.0)),
+            Some(Rotation::Y(180.0)),
             1.0,
         );
 
@@ -157,12 +157,32 @@ impl App {
                 device,
                 &layouts.material,
                 [1.0, 1.0, 1.0, 1.0],
-                None,
-                None,
-                0.0,
-                0.0,
-                None,
-                None,
+                Some(Resources::load_texture(
+                    device,
+                    queue,
+                    Path::new("./assets/textures/brick-wall/brick-wall_albedo.png"),
+                    TextureType::Diffuse,
+                )),
+                Some(Resources::load_texture(
+                    device,
+                    queue,
+                    Path::new("./assets/textures/brick-wall/brick-wall_normal-ogl.png"),
+                    TextureType::Normal,
+                )),
+                1.0,
+                1.0,
+                Some(Resources::load_texture(
+                    device,
+                    queue,
+                    Path::new("./assets/textures/brick-wall/brick-wall_roughness.png"),
+                    TextureType::Diffuse,
+                )),
+                Some(Resources::load_texture(
+                    device,
+                    queue,
+                    Path::new("./assets/textures/brick-wall/brick-wall_ao.png"),
+                    TextureType::Diffuse,
+                )),
             )],
         );
 
