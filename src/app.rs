@@ -178,7 +178,7 @@ impl App {
         ];
 
         let skybox_cubemap = Resources::load_cube_map(device, queue, skybox_paths);
-        let skybox = Skybox::new(device, &layouts.skybox, &skybox_cubemap);
+        let skybox = Skybox::new(skybox_cubemap);
 
         // SCENE
 
@@ -272,6 +272,7 @@ impl App {
             &self.scene.entities,
             &self.camera,
             &self.scene.lights,
+            &self.scene.skybox,
         );
 
         self.shadow_pass.draw(device, queue, view, &render_world);

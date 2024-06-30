@@ -3,7 +3,11 @@ use wgpu::{
     RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
 };
 
-use crate::{entity::Vertex, layouts::Layouts, render_world::RenderWorld, skybox::DrawSkybox};
+use crate::{
+    entity::Vertex,
+    layouts::Layouts,
+    render_world::{DrawWorld, RenderWorld},
+};
 
 use super::RenderPass;
 
@@ -94,8 +98,7 @@ impl RenderPass for SkyboxPass {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-
-        // render_pass.draw_skybox(&world.skybox);
+        render_pass.draw_sky(world);
 
         drop(render_pass);
         let encoder = encoder.finish();

@@ -1,6 +1,7 @@
 mod extracted_camera;
 mod extracted_material;
 mod extracted_mesh;
+mod extracted_skybox;
 mod extracted_transform;
 mod render_object;
 
@@ -8,6 +9,7 @@ use cgmath::Matrix4;
 use extracted_camera::ExtractedCamera;
 use extracted_material::{extract_material, ExtractedMaterial};
 use extracted_mesh::ExtractedMesh;
+use extracted_skybox::{DrawSkybox, ExtractedSkybox};
 use extracted_transform::ExtractedTransform;
 use render_object::{DrawRenderObject, RenderObject};
 use wgpu::{Device, RenderPass};
@@ -17,6 +19,7 @@ use crate::{
     entity::{Entity, Mesh, Node},
     layouts::Layouts,
     light::PointLight,
+    skybox::Skybox,
 };
 
 pub struct RenderWorld<'a> {
@@ -24,6 +27,7 @@ pub struct RenderWorld<'a> {
     pub camera: ExtractedCamera,
     materials: Vec<ExtractedMaterial>,
     pub lights: &'a Vec<PointLight>,
+    pub skybox: ExtractedSkybox,
 }
 
 impl<'a> RenderWorld<'a> {
@@ -33,6 +37,7 @@ impl<'a> RenderWorld<'a> {
         entities: &[Entity],
         camera: &Camera,
         lights: &'a Vec<PointLight>,
+        skybox: &'a Skybox,
     ) -> RenderWorld<'a> {
         let mut materials = vec![];
         let mut objects = vec![];
@@ -47,12 +52,14 @@ impl<'a> RenderWorld<'a> {
         }
 
         let camera = ExtractedCamera::new(device, &layouts.camera, camera);
+        let skybox = ExtractedSkybox::new(device, &layouts.skybox, skybox);
 
         RenderWorld {
             objects,
             camera,
             materials,
             lights,
+            skybox,
         }
     }
 }
@@ -152,6 +159,7 @@ fn extract_mesh(
 
 pub trait DrawWorld<'a> {
     fn draw_world(&mut self, world: &'a RenderWorld);
+    fn draw_sky(&mut self, world: &'a RenderWorld);
 }
 
 impl<'a> DrawWorld<'a> for RenderPass<'a> {
@@ -159,5 +167,10 @@ impl<'a> DrawWorld<'a> for RenderPass<'a> {
         for render_object in &world.objects {
             self.draw_render_object(render_object, &world.materials)
         }
+    }
+
+    fn draw_sky(&mut self, world: &'a RenderWorld) {
+        self.set_bind_group(0, &world.camera, &[]);
+        self.draw_skybox(&world.skybox);
     }
 }
