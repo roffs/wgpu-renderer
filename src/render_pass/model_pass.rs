@@ -193,9 +193,7 @@ impl RenderPass for ModelPass {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &world.camera, &[]);
-        render_pass.set_bind_group(3, &self.light_bind_group, &[]);
-
+        render_pass.set_bind_group(3, &self.light_bind_group, &[]); //TODO move into draw_world()
         render_pass.draw_world(world);
 
         drop(render_pass);
