@@ -13,6 +13,7 @@ pub enum TextureType {
     Depth,
 }
 
+#[derive(Debug)]
 pub struct Texture {
     texture: wgpu::Texture,
     pub view: TextureView,

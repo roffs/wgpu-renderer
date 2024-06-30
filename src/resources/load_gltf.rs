@@ -1,23 +1,19 @@
 use std::path::Path;
 
 use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
-use wgpu::{BindGroupLayout, Device, Queue};
+use wgpu::{Device, Queue};
 
 use crate::{
     entity::{Entity, Geometry, Mesh, Node, Vertex},
     material::Material,
     texture::TextureType,
+    transform::Transform,
 };
 
 use super::Resources;
 
 impl Resources {
-    pub fn load_gltf(
-        device: &Device,
-        queue: &Queue,
-        layout: &BindGroupLayout,
-        path: &Path,
-    ) -> Entity {
+    pub fn load_gltf(device: &Device, queue: &Queue, path: &Path) -> Entity {
         let current_directory = path.parent().unwrap();
 
         let file = std::fs::File::open(path).unwrap();
@@ -28,73 +24,60 @@ impl Resources {
         let buffers = Resources::load_buffers(&gltf, current_directory);
 
         // Load materials
-        let mut materials =
-            Resources::load_materials(device, queue, layout, &gltf, current_directory);
+        let mut materials = Resources::load_materials(device, queue, &gltf, current_directory);
 
-        let default_material = Material::new(
-            device,
-            layout,
-            [0.4, 0.4, 0.2, 1.0],
-            None,
-            None,
-            0.0,
-            0.0,
-            None,
-            None,
-        );
+        let default_material =
+            Material::new([0.4, 0.4, 0.2, 1.0], None, None, 0.0, 0.0, None, None);
 
         materials.push(default_material); // Put default material at the end of the array
 
         // Load default scene
         let default_scene = gltf.default_scene().expect("Default scene not provided!");
 
-        Resources::load_scene(device, default_scene, materials, buffers)
+        Resources::load_scene(default_scene, materials, buffers)
     }
 
-    fn load_scene(
-        device: &Device,
-        scene: GltfScene,
-        materials: Vec<Material>,
-        buffers: Vec<Vec<u8>>,
-    ) -> Entity {
+    fn load_scene(scene: GltfScene, materials: Vec<Material>, buffers: Vec<Vec<u8>>) -> Entity {
         let mut nodes = vec![];
 
         for node in scene.nodes() {
-            let node = Resources::load_node(device, node, &materials, &buffers);
+            let node = Resources::load_node(node, &materials, &buffers);
             nodes.push(node);
         }
 
-        Entity::new(nodes, materials)
+        Entity::new(nodes, materials, Transform::zero())
     }
 
-    fn load_node(
-        device: &Device,
-        node: GltfNode,
-        materials: &Vec<Material>,
-        buffers: &Vec<Vec<u8>>,
-    ) -> Node {
-        let children = node
-            .children()
-            .map(|c| Resources::load_node(device, c, materials, buffers))
-            .collect();
+    fn load_node(node: GltfNode, materials: &Vec<Material>, buffers: &Vec<Vec<u8>>) -> Node {
+        let transform = match node.transform() {
+            gltf::scene::Transform::Matrix { .. } => {
+                let t = node.transform().decomposed();
+                Transform::new(t.0.into(), t.1.into(), t.2.into())
+            }
+            gltf::scene::Transform::Decomposed {
+                translation,
+                rotation,
+                scale,
+            } => Transform::new(translation.into(), rotation.into(), scale.into()),
+        };
 
         let mesh = node
             .mesh()
-            .map(|m| Resources::load_mesh(device, &m, materials, buffers));
+            .map(|m| Resources::load_mesh(&m, materials, buffers));
+
+        let children = node
+            .children()
+            .map(|c| Resources::load_node(c, materials, buffers))
+            .collect();
 
         Node {
             mesh,
-            transform: None,
+            transform,
             children,
         }
     }
 
-    fn load_mesh(
-        device: &Device,
-        mesh: &GltfMesh,
-        materials: &[Material],
-        buffers: &[Vec<u8>],
-    ) -> Mesh {
+    fn load_mesh(mesh: &GltfMesh, materials: &[Material], buffers: &[Vec<u8>]) -> Mesh {
         let mut primitives = vec![];
 
         for primitive in mesh.primitives() {
@@ -134,7 +117,7 @@ impl Resources {
                 .into_u32()
                 .map(|i| i as u16)
                 .collect();
-            let geometry = Geometry::new(device, vertices, indices);
+            let geometry = Geometry::new(vertices, indices);
 
             primitives.push((geometry, material_index));
         }
@@ -145,7 +128,6 @@ impl Resources {
     fn load_materials(
         device: &Device,
         queue: &Queue,
-        layout: &BindGroupLayout,
         gltf: &Gltf,
         current_directory: &Path,
     ) -> Vec<Material> {
@@ -188,8 +170,6 @@ impl Resources {
                 .map(|texture| load_texture(&texture.texture(), TextureType::Diffuse));
 
             Material::new(
-                device,
-                layout,
                 base_color,
                 diffuse_texture,
                 normal_texture,

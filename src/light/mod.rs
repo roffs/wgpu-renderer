@@ -10,6 +10,7 @@ use shadow_camera::ShadowCamera;
 pub struct PointLight {
     position: (f32, f32, f32),
     color: (f32, f32, f32),
+    // TODO: move in extracted RenderWorld
     pub shadow_map: CubeMap,
     pub shadow_cameras: [ShadowCamera; 6],
 }

@@ -2,6 +2,7 @@ use cgmath::Vector3;
 use wgpu::{VertexAttribute, VertexBufferLayout};
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Vertex {
     position: [f32; 3],
     uv: [f32; 2],

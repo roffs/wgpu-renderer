@@ -1,7 +1,4 @@
-use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, IndexFormat,
-    RenderPass,
-};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device, RenderPass};
 
 use crate::{entity::Geometry, texture::CubeMap};
 
@@ -12,7 +9,7 @@ pub struct Skybox {
 
 impl Skybox {
     pub fn new(device: &Device, layout: &BindGroupLayout, cubemap: &CubeMap) -> Skybox {
-        let geometry = Geometry::cube(device);
+        let geometry = Geometry::cube();
 
         let bind_group_entry = BindGroupEntry {
             binding: 1,
@@ -55,8 +52,8 @@ pub trait DrawSkybox<'a> {
 
 impl<'a> DrawSkybox<'a> for RenderPass<'a> {
     fn draw_skybox(&mut self, skybox: &'a Skybox) {
-        self.set_vertex_buffer(0, skybox.geometry.vertex_buffer.slice(..));
-        self.set_index_buffer(skybox.geometry.index_buffer.slice(..), IndexFormat::Uint16);
+        // self.set_vertex_buffer(0, skybox.geometry.vertex_buffer.slice(..));
+        // self.set_index_buffer(skybox.geometry.index_buffer.slice(..), IndexFormat::Uint16);
         self.set_bind_group(1, &skybox.bind_group, &[]);
         self.draw_indexed(0..skybox.geometry.indices.len() as u32, 0, 0..1);
     }

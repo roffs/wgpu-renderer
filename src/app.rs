@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use cgmath::{Deg, Vector3};
+use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
 use wgpu::TextureView;
 use winit::{
     event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
@@ -16,16 +16,17 @@ use crate::{
     light::PointLight,
     material::Material,
     render_pass::{ModelPass, RenderPass, ShadowPass, SkyboxPass},
+    render_world::RenderWorld,
     resources::Resources,
     scene::Scene,
     skybox::Skybox,
     surface_context::SurfaceContext,
     texture::TextureType,
-    transform::{Rotation, Transform},
+    transform::Transform,
 };
 
 pub struct App {
-    _layouts: Layouts,
+    layouts: Layouts,
     camera_controller: CameraController,
     camera: Camera,
     scene: Scene,
@@ -53,42 +54,31 @@ impl App {
         );
 
         // MODELS
-        let helmet_transform = Transform::new(
-            device,
-            queue,
-            &layouts.transform,
-            (0.0, 1.0, 0.0),
-            Some(Rotation::Y(180.0)),
-            1.0,
-        );
+        let helmet_transform = Transform::new((0.0, 1.0, 0.0), Quaternion::zero(), (1.0, 1.0, 1.0));
 
-        let helmet = Resources::load_gltf(
+        let mut helmet = Resources::load_gltf(
             device,
             queue,
-            &layouts.material,
             Path::new("./assets/models/damaged_helmet/DamagedHelmet.gltf"),
         );
 
+        helmet.apply_transform(helmet_transform);
+
         let flat_cube_transform = Transform::new(
-            device,
-            queue,
-            &layouts.transform,
             (3.0, 1.5, -2.0),
-            Some(Rotation::X(-90.0)),
-            2.0,
+            Quaternion::from_angle_x(Deg(-90.0)),
+            (2.0, 2.0, 2.0),
         );
 
         let flat_cube = Entity::new(
             vec![Node {
                 mesh: Some(Mesh {
-                    primitives: vec![(Geometry::cube(device), 0)],
+                    primitives: vec![(Geometry::cube(), 0)],
                 }),
-                transform: None,
+                transform: Transform::zero(),
                 children: Vec::new(),
             }],
             vec![Material::new(
-                device,
-                &layouts.material,
                 [1.0, 1.0, 1.0, 1.0],
                 Some(Resources::load_texture(
                     device,
@@ -102,60 +92,43 @@ impl App {
                 None,
                 None,
             )],
+            flat_cube_transform,
         );
 
         let stone_cube_transform = Transform::new(
-            device,
-            queue,
-            &layouts.transform,
             (-3.0, 1.5, 2.5),
-            Some(Rotation::X(-90.0)),
-            1.0,
+            Quaternion::zero(),
+            // (0.01, 0.01, 0.01),
+            (1.0, 1.0, 1.0),
         );
 
-        let stone_cube = Resources::load_gltf(
+        let mut stone_cube = Resources::load_gltf(
             device,
             queue,
-            &layouts.material,
             Path::new("./assets/models/stone_cube/scene.gltf"),
         );
 
-        let shiba_transform = Transform::new(
-            device,
-            queue,
-            &layouts.transform,
-            (-2.0, 1.0, -2.0),
-            Some(Rotation::X(-90.0)),
-            1.0,
-        );
+        stone_cube.apply_transform(stone_cube_transform);
 
-        let shiba = Resources::load_gltf(
-            device,
-            queue,
-            &layouts.material,
-            Path::new("./assets/models/shiba/scene.gltf"),
-        );
+        let shiba_transform =
+            Transform::new((-2.0, 1.0, -2.0), Quaternion::zero(), (1.0, 1.0, 1.0));
 
-        let floor_transform = Transform::new(
-            device,
-            queue,
-            &layouts.transform,
-            (0.0, 0.0, 0.0),
-            None,
-            50.0,
-        );
+        let mut shiba =
+            Resources::load_gltf(device, queue, Path::new("./assets/models/shiba/scene.gltf"));
+        shiba.apply_transform(shiba_transform);
+
+        let floor_transform =
+            Transform::new((0.0, 0.0, 0.0), Quaternion::zero(), (25.0, 25.0, 25.0));
 
         let floor = Entity::new(
             vec![Node {
                 mesh: Some(Mesh {
-                    primitives: vec![(Geometry::plane(device), 0)],
+                    primitives: vec![(Geometry::plane(), 0)],
                 }),
-                transform: None,
+                transform: Transform::zero(),
                 children: Vec::new(),
             }],
             vec![Material::new(
-                device,
-                &layouts.material,
                 [1.0, 1.0, 1.0, 1.0],
                 Some(Resources::load_texture(
                     device,
@@ -184,6 +157,7 @@ impl App {
                     TextureType::Diffuse,
                 )),
             )],
+            floor_transform,
         );
 
         // LIGHT
@@ -208,13 +182,7 @@ impl App {
 
         // SCENE
 
-        let entities = vec![
-            (helmet, helmet_transform),
-            (flat_cube, flat_cube_transform),
-            (stone_cube, stone_cube_transform),
-            (floor, floor_transform),
-            (shiba, shiba_transform),
-        ];
+        let entities = vec![helmet, flat_cube, stone_cube, floor, shiba];
 
         let lights = vec![light, second_light, third_light];
 
@@ -229,7 +197,7 @@ impl App {
         let shadow_pass = ShadowPass::new(device, surface.config(), &layouts, &scene.lights);
 
         App {
-            _layouts: layouts,
+            layouts,
             camera_controller,
             camera,
             scene,
@@ -298,12 +266,17 @@ impl App {
     pub fn render(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, view: &TextureView) {
         self.camera_controller.update(&mut self.camera);
 
-        self.shadow_pass
-            .draw(device, queue, view, &self.camera, &self.scene);
-        self.skybox_pass
-            .draw(device, queue, view, &self.camera, &self.scene);
-        self.model_pass
-            .draw(device, queue, view, &self.camera, &self.scene);
+        let render_world = RenderWorld::extract(
+            device,
+            &self.layouts,
+            &self.scene.entities,
+            &self.camera,
+            &self.scene.lights,
+        );
+
+        self.shadow_pass.draw(device, queue, view, &render_world);
+        self.skybox_pass.draw(device, queue, view, &render_world);
+        self.model_pass.draw(device, queue, view, &render_world);
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {

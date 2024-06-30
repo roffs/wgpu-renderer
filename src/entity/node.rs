@@ -1,27 +1,20 @@
-use wgpu::RenderPass;
+use crate::transform::Transform;
 
-use crate::{material::Material, transform::Transform};
+use std::fmt::Debug;
 
-use super::{mesh::DrawMesh, Mesh};
+use super::Mesh;
 
 pub struct Node {
-    pub transform: Option<Transform>,
+    pub transform: Transform,
     pub children: Vec<Node>,
     pub mesh: Option<Mesh>,
 }
 
-pub trait DrawNode<'a> {
-    fn draw_node(&mut self, node: &'a Node, materials: &'a [Material]);
-}
-
-impl<'a> DrawNode<'a> for RenderPass<'a> {
-    fn draw_node(&mut self, node: &'a Node, materials: &'a [Material]) {
-        if let Some(mesh) = &node.mesh {
-            self.draw_mesh(mesh, materials);
-        }
-
-        for child in &node.children {
-            self.draw_node(child, materials);
-        }
+impl Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Node")
+            .field("transform", &self.transform)
+            .field("children", &self.children)
+            .finish()
     }
 }

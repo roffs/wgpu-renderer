@@ -4,7 +4,7 @@ use cgmath::{perspective, Angle, Deg, Matrix4, Point3, Rad, Vector3};
 pub use camera_controller::CameraController;
 
 pub struct Camera {
-    pub(self) position: Point3<f32>,
+    pub position: Point3<f32>,
     pub(self) yaw: Rad<f32>,
     pub(self) pitch: Rad<f32>,
 
@@ -91,26 +91,4 @@ fn calculate_local_directions(
     let forward = up.cross(right);
 
     (look_dir, up, right, forward)
-}
-
-#[allow(dead_code)]
-#[repr(C)]
-pub struct CameraUniform {
-    view: Matrix4<f32>,
-    rotation: Matrix4<f32>,
-    projection: Matrix4<f32>,
-    position: [f32; 3],
-    _padding: f32,
-}
-
-impl From<&Camera> for CameraUniform {
-    fn from(camera: &Camera) -> Self {
-        CameraUniform {
-            view: camera.get_view(),
-            rotation: camera.get_rotation(),
-            projection: camera.get_projection(),
-            position: camera.position.into(),
-            _padding: 0.0,
-        }
-    }
 }

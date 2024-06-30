@@ -141,7 +141,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var ambient = vec3f(0.05) * albedo * ao;
     
     var color = ambient + Lo;
-    return vec4f(normal, 1.0);
+    return vec4f(color, 1.0);
 }
 
 fn calc_attenuation(vsout: VSOut, light: PointLight) -> f32 {

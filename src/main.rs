@@ -6,6 +6,7 @@ mod layouts;
 mod light;
 mod material;
 mod render_pass;
+mod render_world;
 mod resources;
 mod scene;
 mod skybox;

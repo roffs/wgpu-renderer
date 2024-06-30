@@ -6,11 +6,10 @@ use wgpu::{
 };
 
 use crate::{
-    camera::{Camera, CameraUniform},
-    entity::{DrawEntity, Vertex},
+    entity::Vertex,
     layouts::Layouts,
     light::{PointLight, PointLightRaw},
-    scene::Scene,
+    render_world::{DrawWorld, RenderWorld},
     texture::{Texture, TextureType},
 };
 
@@ -19,8 +18,6 @@ use super::RenderPass;
 pub struct ModelPass {
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
-    camera_buffer: Buffer,
-    camera_bind_group: BindGroup,
     light_buffer: Buffer,
     light_bind_group: BindGroup,
 }
@@ -35,26 +32,6 @@ impl ModelPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
-        });
-
-        // CAMERA
-
-        let camera_buffer_size = std::mem::size_of::<CameraUniform>();
-
-        let camera_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Model camera buffer"),
-            size: camera_buffer_size as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Model camera bind group"),
-            layout: &layouts.camera,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
         });
 
         // LIGHT
@@ -163,8 +140,6 @@ impl ModelPass {
         ModelPass {
             render_pipeline,
             depth_texture,
-            camera_buffer,
-            camera_bind_group,
             light_buffer,
             light_bind_group,
         }
@@ -177,24 +152,12 @@ impl RenderPass for ModelPass {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         view: &TextureView,
-        camera: &Camera,
-        scene: &Scene,
+        world: &RenderWorld,
     ) {
-        let camera_uniform = CameraUniform::from(camera);
-        let camera_uniform = unsafe {
-            std::slice::from_raw_parts(
-                &camera_uniform as *const CameraUniform as *const u8,
-                std::mem::size_of::<CameraUniform>(),
-            )
-        };
-
-        queue.write_buffer(&self.camera_buffer, 0, camera_uniform);
-
         // UPDATE LIGHT BUFFER
-
         let light_size = std::mem::size_of::<PointLightRaw>();
 
-        for (index, light) in scene.lights.iter().enumerate() {
+        for (index, light) in world.lights.iter().enumerate() {
             let light_data = unsafe {
                 let light = &light.to_raw();
                 std::slice::from_raw_parts(light as *const PointLightRaw as *const u8, light_size)
@@ -230,13 +193,10 @@ impl RenderPass for ModelPass {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(0, &world.camera, &[]);
         render_pass.set_bind_group(3, &self.light_bind_group, &[]);
 
-        for (entity, transform) in &scene.entities {
-            render_pass.set_bind_group(1, transform, &[]);
-            render_pass.draw_entity(entity);
-        }
+        render_pass.draw_world(world);
 
         drop(render_pass);
         let encoder = encoder.finish();

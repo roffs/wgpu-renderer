@@ -6,9 +6,10 @@ use wgpu::{
 };
 
 use crate::{
-    entity::{DrawEntity, Vertex},
+    entity::Vertex,
     layouts::Layouts,
     light::PointLight,
+    render_world::{DrawWorld, RenderWorld},
     texture::{Texture, TextureType},
 };
 
@@ -123,14 +124,13 @@ impl RenderPass for ShadowPass {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         _view: &wgpu::TextureView,
-        _camera: &crate::camera::Camera,
-        scene: &crate::scene::Scene,
+        world: &RenderWorld,
     ) {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Shadow map render Encoder"),
         });
 
-        for (light_index, light) in scene.lights.iter().enumerate() {
+        for (light_index, light) in world.lights.iter().enumerate() {
             for camera_index in 0..light.shadow_cameras.len() {
                 let shadow_map_view =
                     light
@@ -175,12 +175,9 @@ impl RenderPass for ShadowPass {
                     .shadow_bind_groups
                     .get((light_index * 6) + camera_index)
                     .unwrap();
-                render_pass.set_bind_group(0, shadow_bind_group, &[]);
 
-                for (entity, transform) in &scene.entities {
-                    render_pass.set_bind_group(1, transform, &[]);
-                    render_pass.draw_entity(entity);
-                }
+                render_pass.set_bind_group(0, shadow_bind_group, &[]);
+                render_pass.draw_world(world);
             }
         }
 

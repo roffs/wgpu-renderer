@@ -7,8 +7,15 @@ struct VSOut {
     @builtin(position) position: vec4f, 
     @location(0) uv: vec3f,
 }
-@group(0) @binding(0) 
-var<uniform> view_projection: mat4x4f;
+
+struct Camera {
+    view: mat4x4f,
+    rotation: mat4x4f,
+    projection: mat4x4f,
+    position: vec3f,
+}
+
+@group(0) @binding(0) var<uniform> camera: Camera;
 
 @vertex 
 fn vs_main(
@@ -17,7 +24,7 @@ fn vs_main(
 
     var vsout: VSOut;
 
-    vsout.position = view_projection * vec4f(vertex.position * 2.0, 1.0);
+    vsout.position = camera.projection * camera.rotation * vec4f(vertex.position * 2.0, 1.0);
     vsout.uv = vertex.position; 
     return vsout;
 }

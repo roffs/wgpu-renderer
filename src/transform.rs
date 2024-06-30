@@ -1,92 +1,67 @@
-use std::ops::Deref;
+use cgmath::{InnerSpace, Matrix, Matrix3, Matrix4, Quaternion, Zero};
 
-use cgmath::{Deg, Matrix, SquareMatrix};
-use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferDescriptor,
-    BufferUsages, Device, Queue,
-};
-
-#[allow(dead_code)]
-pub enum Rotation {
-    X(f32),
-    Y(f32),
-    Z(f32),
-}
-
+#[derive(Debug)]
 pub struct Transform {
-    bind_group: BindGroup,
+    pub translation: (f32, f32, f32),
+    pub rotation: Quaternion<f32>,
+    pub scale: (f32, f32, f32),
 }
 
 impl Transform {
     pub fn new(
-        device: &Device,
-        queue: &Queue,
-        layout: &BindGroupLayout,
         translation: (f32, f32, f32),
-        rotation: Option<Rotation>,
-        scale: f32,
+        rotation: Quaternion<f32>,
+        scale: (f32, f32, f32),
     ) -> Transform {
-        let translation_matrix =
-            cgmath::Matrix4::from_translation(cgmath::Vector3::<f32>::from(translation));
-        let scale_matrix = cgmath::Matrix4::<f32>::from_scale(scale);
-
-        let rotation_matrix = if let Some(rotation) = rotation {
-            match rotation {
-                Rotation::X(deg) => cgmath::Matrix4::<f32>::from_angle_x(Deg(deg)),
-                Rotation::Y(deg) => cgmath::Matrix4::<f32>::from_angle_y(Deg(deg)),
-                Rotation::Z(deg) => cgmath::Matrix4::<f32>::from_angle_z(Deg(deg)),
-            }
-        } else {
-            cgmath::Matrix4::identity()
-        };
-
-        let model_matrix = translation_matrix * rotation_matrix * scale_matrix;
-        let normal_matrix = model_matrix.invert().unwrap().transpose();
-
-        let uniform = TransformUniform {
-            _model_matrix: model_matrix,
-            _normal_matrix: normal_matrix,
-        };
-
-        let buffer_size = std::mem::size_of::<TransformUniform>();
-        let buffer_data = unsafe {
-            std::slice::from_raw_parts(
-                &uniform as *const TransformUniform as *const u8,
-                buffer_size,
-            )
-        };
-
-        let buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Model buffer"),
-            size: std::mem::size_of::<TransformUniform>() as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Model bind group"),
-            layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
-        });
-
-        queue.write_buffer(&buffer, 0, buffer_data);
-
-        Transform { bind_group }
+        Transform {
+            translation,
+            rotation,
+            scale,
+        }
     }
-}
 
-impl Deref for Transform {
-    type Target = BindGroup;
+    pub fn _from_matrix(matrix: Matrix4<f32>) -> Transform {
+        let transposed = matrix.transpose();
 
-    fn deref(&self) -> &Self::Target {
-        &self.bind_group
+        let first = transposed.row(0);
+        let second = transposed.row(1);
+        let third = transposed.row(2);
+        let fourth = transposed.row(3);
+
+        let translation = fourth.truncate().into();
+
+        let sx = first.truncate().magnitude();
+        let sy = second.truncate().magnitude();
+        let sz = third.truncate().magnitude();
+
+        let scale = (sx, sy, sz);
+
+        let rotation = Quaternion::from(Matrix3::from_cols(
+            first.truncate() / sx,
+            second.truncate() / sy,
+            third.truncate() / sz,
+        ));
+
+        Transform {
+            translation,
+            rotation,
+            scale,
+        }
     }
-}
 
-struct TransformUniform {
-    _model_matrix: cgmath::Matrix4<f32>,
-    _normal_matrix: cgmath::Matrix4<f32>,
+    pub fn zero() -> Transform {
+        Transform {
+            translation: (0.0, 0.0, 0.0),
+            rotation: Quaternion::<f32>::zero(),
+            scale: (1.0, 1.0, 1.0),
+        }
+    }
+
+    pub fn model(&self) -> Matrix4<f32> {
+        let local_translation = Matrix4::from_translation(self.translation.into());
+        let local_rotation = Matrix4::from(self.rotation);
+        let local_scale = Matrix4::from_nonuniform_scale(self.scale.0, self.scale.1, self.scale.2);
+
+        local_translation * local_rotation * local_scale
+    }
 }
