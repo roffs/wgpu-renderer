@@ -164,8 +164,6 @@ pub trait DrawWorld<'a> {
 
 impl<'a> DrawWorld<'a> for RenderPass<'a> {
     fn draw_world(&mut self, world: &'a RenderWorld) {
-        self.set_bind_group(0, &world.camera, &[]);
-
         for render_object in &world.objects {
             self.draw_render_object(render_object, &world.materials)
         }
