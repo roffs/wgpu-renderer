@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use cgmath::{Vector2, Vector3};
 use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use wgpu::{Device, Queue};
 
@@ -13,6 +14,7 @@ use crate::{
 use super::Resources;
 
 impl Resources {
+    //TODO move texture loading to extract world stage?
     pub fn load_gltf(device: &Device, queue: &Queue, path: &Path) -> Entity {
         let current_directory = path.parent().unwrap();
 
@@ -84,6 +86,7 @@ impl Resources {
             let material_index = match primitive.material().index() {
                 Some(i) => i,
                 None => materials.len() - 1, // Default materials is in the last place of the array
+                                             // TODO: Make material_index an Option<> and move this logic into extract_world()?
             };
 
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
@@ -100,7 +103,7 @@ impl Resources {
                 .read_tangents()
                 .map(|iter| iter.map(|t| [t[0], t[1], t[2]]).collect::<Vec<_>>());
 
-            let vertices = (0..positions.len())
+            let mut vertices = (0..positions.len())
                 .map(|index| {
                     let tangent = match &tangents {
                         Some(t) => t[index],
@@ -111,12 +114,39 @@ impl Resources {
                 })
                 .collect::<Vec<Vertex>>();
 
-            let indices = reader
+            let indices: Vec<u16> = reader
                 .read_indices()
                 .unwrap()
                 .into_u32()
                 .map(|i| i as u16)
                 .collect();
+
+            if tangents.is_none() {
+                for i in indices.chunks(3) {
+                    let pos0: Vector3<f32> = positions[i[0] as usize].into();
+                    let pos1: Vector3<f32> = positions[i[1] as usize].into();
+                    let pos2: Vector3<f32> = positions[i[2] as usize].into();
+
+                    let uv0: Vector2<f32> = uvs[i[0] as usize].into();
+                    let uv1: Vector2<f32> = uvs[i[1] as usize].into();
+                    let uv2: Vector2<f32> = uvs[i[2] as usize].into();
+
+                    let delta_pos1 = pos1 - pos0;
+                    let delta_pos2 = pos2 - pos0;
+
+                    let delta_uv1 = uv1 - uv0;
+                    let delta_uv2 = uv2 - uv0;
+
+                    let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
+                    let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
+                    // let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * -r;
+
+                    vertices[i[0] as usize].tangent = tangent.into();
+                    vertices[i[1] as usize].tangent = tangent.into();
+                    vertices[i[2] as usize].tangent = tangent.into();
+                }
+            }
+
             let geometry = Geometry::new(vertices, indices);
 
             primitives.push((geometry, material_index));
