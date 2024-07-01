@@ -92,6 +92,13 @@ impl Resources {
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
             // Read vertex attributes
+            let indices: Vec<u16> = reader
+                .read_indices()
+                .unwrap()
+                .into_u32()
+                .map(|i| i as u16)
+                .collect();
+
             let positions = reader.read_positions().unwrap().collect::<Vec<_>>();
             let uvs = reader
                 .read_tex_coords(0)
@@ -103,33 +110,20 @@ impl Resources {
                 .read_tangents()
                 .map(|iter| iter.map(|t| [t[0], t[1], t[2]]).collect::<Vec<_>>());
 
-            let mut vertices = (0..positions.len())
-                .map(|index| {
-                    let tangent = match &tangents {
-                        Some(t) => t[index],
-                        None => [0.0, 0.0, 0.0],
-                    };
-
-                    Vertex::new(positions[index], uvs[index], normals[index], tangent)
-                })
-                .collect::<Vec<Vertex>>();
-
-            let indices: Vec<u16> = reader
-                .read_indices()
-                .unwrap()
-                .into_u32()
-                .map(|i| i as u16)
-                .collect();
-
-            if tangents.is_none() {
+            let tangents = tangents.unwrap_or_else(|| {
+                let mut tangents = vec![[0.0; 3]; positions.len()];
                 for i in indices.chunks(3) {
-                    let pos0: Vector3<f32> = positions[i[0] as usize].into();
-                    let pos1: Vector3<f32> = positions[i[1] as usize].into();
-                    let pos2: Vector3<f32> = positions[i[2] as usize].into();
+                    let i1 = i[0] as usize;
+                    let i2 = i[1] as usize;
+                    let i3 = i[2] as usize;
 
-                    let uv0: Vector2<f32> = uvs[i[0] as usize].into();
-                    let uv1: Vector2<f32> = uvs[i[1] as usize].into();
-                    let uv2: Vector2<f32> = uvs[i[2] as usize].into();
+                    let pos0: Vector3<f32> = positions[i1].into();
+                    let pos1: Vector3<f32> = positions[i2].into();
+                    let pos2: Vector3<f32> = positions[i3].into();
+
+                    let uv0: Vector2<f32> = uvs[i1].into();
+                    let uv1: Vector2<f32> = uvs[i2].into();
+                    let uv2: Vector2<f32> = uvs[i3].into();
 
                     let delta_pos1 = pos1 - pos0;
                     let delta_pos2 = pos2 - pos0;
@@ -139,13 +133,26 @@ impl Resources {
 
                     let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
                     let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
+                    let tangent: [f32; 3] = tangent.into();
                     // let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * -r;
 
-                    vertices[i[0] as usize].tangent = tangent.into();
-                    vertices[i[1] as usize].tangent = tangent.into();
-                    vertices[i[2] as usize].tangent = tangent.into();
+                    tangents[i1] = tangent;
+                    tangents[i2] = tangent;
+                    tangents[i3] = tangent;
                 }
-            }
+                tangents
+            });
+
+            let vertices = (0..positions.len())
+                .map(|index| {
+                    Vertex::new(
+                        positions[index],
+                        uvs[index],
+                        normals[index],
+                        tangents[index],
+                    )
+                })
+                .collect::<Vec<Vertex>>();
 
             let geometry = Geometry::new(vertices, indices);
 
