@@ -3,7 +3,6 @@ struct Vertex {
     @location(1) uv: vec2f,
     @location(2) normal: vec3f,
     @location(3) tangent: vec3f,
-    @location(4) bitangent: vec3f,
 }
 
 struct VSOut {
@@ -47,7 +46,7 @@ fn vs_main(
     vsout.world_position = vertex_world_position;
     vsout.normal = normalize((transform.normal * vec4f(vertex.normal, 1.0)).xyz);
     vsout.tangent = normalize((transform.normal * vec4f(vertex.tangent, 1.0)).xyz);
-    vsout.bitangent = normalize((transform.normal * vec4f(vertex.bitangent, 1.0)).xyz);
+    vsout.bitangent = cross(vsout.normal, vsout.tangent);
     
     return vsout;
 }

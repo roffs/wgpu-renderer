@@ -19,16 +19,11 @@ impl ExtractedTransform {
         transform: &Transform,
         parent_model_matrix: Matrix4<f32>,
     ) -> ExtractedTransform {
-        let mut local_model = transform.model();
-        let mut normal_matrix = local_model.invert().unwrap().transpose();
-
-        let parent_normal_matrix = parent_model_matrix.invert().unwrap().transpose();
-
-        local_model = parent_model_matrix * local_model;
-        normal_matrix = normal_matrix * parent_normal_matrix;
+        let model_matrix = parent_model_matrix * transform.model();
+        let normal_matrix = model_matrix.invert().unwrap().transpose();
 
         let uniform = TransformUniform {
-            model_matrix: local_model,
+            model_matrix,
             normal_matrix,
         };
 
@@ -39,13 +34,13 @@ impl ExtractedTransform {
             )
         };
         let buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Model buffer"),
+            label: Some("Transform buffer"),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             contents: buffer_data,
         });
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Model bind group"),
+            label: Some("Transform bind group"),
             layout,
             entries: &[BindGroupEntry {
                 binding: 0,
