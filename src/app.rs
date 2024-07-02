@@ -11,6 +11,7 @@ use winit::{
 use crate::{
     camera::{Camera, CameraController},
     entity::{Entity, Geometry, Mesh, Node},
+    environment_map::EnvironmentMap,
     gpu_context::GpuContext,
     layouts::Layouts,
     light::PointLight,
@@ -19,7 +20,6 @@ use crate::{
     render_world::RenderWorld,
     resources::Resources,
     scene::Scene,
-    skybox::Skybox,
     surface_context::SurfaceContext,
     texture::TextureType,
     transform::Transform,
@@ -168,7 +168,7 @@ impl App {
 
         // SKYBOX
 
-        let skybox_paths = [
+        let env_map_paths = [
             Path::new("./assets/skybox/sky/right.jpg"),
             Path::new("./assets/skybox/sky/left.jpg"),
             Path::new("./assets/skybox/sky/top.jpg"),
@@ -177,8 +177,7 @@ impl App {
             Path::new("./assets/skybox/sky/back.jpg"),
         ];
 
-        let skybox_cubemap = Resources::load_cube_map(device, queue, skybox_paths);
-        let skybox = Skybox::new(skybox_cubemap);
+        let env_map = EnvironmentMap::from(Resources::load_cube_map(device, queue, env_map_paths));
 
         // SCENE
 
@@ -189,7 +188,7 @@ impl App {
         let scene = Scene {
             entities,
             lights,
-            skybox,
+            env_map,
         };
 
         let model_pass = ModelPass::new(device, surface.config(), &layouts, &scene.lights);
@@ -272,7 +271,7 @@ impl App {
             &self.scene.entities,
             &self.camera,
             &self.scene.lights,
-            &self.scene.skybox,
+            &self.scene.env_map,
         );
 
         self.shadow_pass.draw(device, queue, view, &render_world);

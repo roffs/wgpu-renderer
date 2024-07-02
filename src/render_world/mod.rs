@@ -1,15 +1,15 @@
 mod extracted_camera;
+mod extracted_env_map;
 mod extracted_material;
 mod extracted_mesh;
-mod extracted_skybox;
 mod extracted_transform;
 mod render_object;
 
 use cgmath::Matrix4;
 use extracted_camera::ExtractedCamera;
+use extracted_env_map::ExtractedEnvMap;
 use extracted_material::{extract_material, ExtractedMaterial};
 use extracted_mesh::ExtractedMesh;
-use extracted_skybox::{DrawSkybox, ExtractedSkybox};
 use extracted_transform::ExtractedTransform;
 use render_object::{DrawRenderObject, RenderObject};
 use wgpu::{Device, RenderPass};
@@ -17,9 +17,9 @@ use wgpu::{Device, RenderPass};
 use crate::{
     camera::Camera,
     entity::{Entity, Mesh, Node},
+    environment_map::EnvironmentMap,
     layouts::Layouts,
     light::PointLight,
-    skybox::Skybox,
 };
 
 pub struct RenderWorld<'a> {
@@ -27,7 +27,7 @@ pub struct RenderWorld<'a> {
     pub camera: ExtractedCamera,
     materials: Vec<ExtractedMaterial>,
     pub lights: &'a Vec<PointLight>,
-    pub skybox: ExtractedSkybox,
+    pub env_map: ExtractedEnvMap,
 }
 
 impl<'a> RenderWorld<'a> {
@@ -37,7 +37,7 @@ impl<'a> RenderWorld<'a> {
         entities: &[Entity],
         camera: &Camera,
         lights: &'a Vec<PointLight>,
-        skybox: &'a Skybox,
+        env_map: &'a EnvironmentMap,
     ) -> RenderWorld<'a> {
         let mut materials = vec![];
         let mut objects = vec![];
@@ -52,14 +52,14 @@ impl<'a> RenderWorld<'a> {
         }
 
         let camera = ExtractedCamera::new(device, &layouts.camera, camera);
-        let skybox = ExtractedSkybox::new(device, &layouts.skybox, skybox);
+        let env_map = ExtractedEnvMap::new(device, &layouts.sky, env_map);
 
         RenderWorld {
             objects,
             camera,
             materials,
             lights,
-            skybox,
+            env_map,
         }
     }
 }
@@ -159,7 +159,7 @@ fn extract_mesh(
 
 pub trait DrawWorld<'a> {
     fn draw_world(&mut self, world: &'a RenderWorld);
-    fn draw_sky(&mut self, world: &'a RenderWorld);
+    fn draw_skybox(&mut self, world: &'a RenderWorld);
 }
 
 impl<'a> DrawWorld<'a> for RenderPass<'a> {
@@ -169,8 +169,9 @@ impl<'a> DrawWorld<'a> for RenderPass<'a> {
         }
     }
 
-    fn draw_sky(&mut self, world: &'a RenderWorld) {
+    fn draw_skybox(&mut self, world: &'a RenderWorld) {
         self.set_bind_group(0, &world.camera, &[]);
-        self.draw_skybox(&world.skybox);
+        self.set_bind_group(1, &world.env_map, &[]);
+        self.draw(0..3, 0..1)
     }
 }

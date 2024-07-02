@@ -1,41 +1,46 @@
-struct Vertex {
-    @location(0) position: vec3f,
-    @location(1) uv: vec2f,
+struct VSOut {
+    @builtin(position) frag_position: vec4<f32>,
+    @location(0) clip_position: vec4<f32>,
 }
 
-struct VSOut {
-    @builtin(position) position: vec4f, 
-    @location(0) uv: vec3f,
+@vertex 
+fn vs_main(
+    @builtin(vertex_index) id: u32,    
+) -> VSOut {
+
+    // Reference: https://sotrh.github.io/learn-wgpu/intermediate/tutorial13-hdr/#skybox
+    let uv = vec2<f32>(vec2<u32>(
+        id & 1u,
+        (id >> 1u) & 1u,
+    ));
+
+    var vsout: VSOut;
+
+    vsout.clip_position = vec4(uv * 4.0 - 1.0, 1.0, 1.0);
+    vsout.frag_position = vec4(uv * 4.0 - 1.0, 1.0, 1.0);
+    return vsout;
 }
 
 struct Camera {
-    view: mat4x4f,
-    rotation: mat4x4f,
-    projection: mat4x4f,
     position: vec3f,
+    view: mat4x4f,
+    inv_view: mat4x4f,
+    proj: mat4x4f,
+    inv_proj: mat4x4f,
 }
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 
-@vertex 
-fn vs_main(
-    vertex: Vertex,    
-) -> VSOut {
-
-    var vsout: VSOut;
-
-    vsout.position = camera.projection * camera.rotation * vec4f(vertex.position * 2.0, 1.0);
-    vsout.uv = vertex.position; 
-    return vsout;
-}
-
 @group(1) @binding(0) 
-var sky_sampler: sampler;
+var env_sampler: sampler;
 @group(1) @binding(1) 
-var sky_texture: texture_cube<f32>;
+var env_map: texture_cube<f32>;
 
 @fragment 
-fn fs_main(vsout: VSOut) -> @location(0) vec4f {
+fn fs_main(in: VSOut) -> @location(0) vec4f {
+    let view_pos_homogeneous = camera.inv_proj * in.clip_position;
+    let view_ray_direction = view_pos_homogeneous.xyz / view_pos_homogeneous.w;
+    var ray_direction = normalize((camera.inv_view * vec4(view_ray_direction, 0.0)).xyz);
 
-    return textureSample(sky_texture, sky_sampler, vsout.uv);
+    return textureSample(env_map, env_sampler, ray_direction);
 }

@@ -4,7 +4,6 @@ use wgpu::{
 };
 
 use crate::{
-    entity::Vertex,
     layouts::Layouts,
     render_world::{DrawWorld, RenderWorld},
 };
@@ -25,7 +24,7 @@ impl SkyboxPass {
         // PIPELINE
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Skybox pipeline layout"),
-            bind_group_layouts: &[&layouts.camera, &layouts.skybox],
+            bind_group_layouts: &[&layouts.camera, &layouts.sky],
             push_constant_ranges: &[],
         });
 
@@ -36,7 +35,7 @@ impl SkyboxPass {
                 module: &shader,
                 entry_point: "vs_main",
                 compilation_options: Default::default(),
-                buffers: &[Vertex::desc()],
+                buffers: &[],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -98,7 +97,7 @@ impl RenderPass for SkyboxPass {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.draw_sky(world);
+        render_pass.draw_skybox(world);
 
         drop(render_pass);
         let encoder = encoder.finish();

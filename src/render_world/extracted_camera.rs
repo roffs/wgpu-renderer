@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use cgmath::Matrix4;
+use cgmath::{Matrix4, SquareMatrix};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Buffer, BufferUsages, Device,
@@ -54,21 +54,26 @@ impl Deref for ExtractedCamera {
 #[allow(dead_code)]
 #[repr(C)]
 pub struct CameraUniform {
-    view: Matrix4<f32>,
-    rotation: Matrix4<f32>,
-    projection: Matrix4<f32>,
     position: [f32; 3],
     _padding: f32,
+    view: Matrix4<f32>,
+    inv_view: Matrix4<f32>,
+    proj: Matrix4<f32>,
+    inv_proj: Matrix4<f32>,
 }
 
 impl From<&Camera> for CameraUniform {
     fn from(camera: &Camera) -> Self {
+        let proj = camera.get_projection();
+        let view = camera.get_view();
+
         CameraUniform {
-            view: camera.get_view(),
-            rotation: camera.get_rotation(),
-            projection: camera.get_projection(),
             position: camera.position.into(),
             _padding: 0.0,
+            view,
+            proj,
+            inv_proj: proj.invert().unwrap(),
+            inv_view: view.invert().unwrap(),
         }
     }
 }

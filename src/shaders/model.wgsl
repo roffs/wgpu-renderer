@@ -14,11 +14,13 @@ struct VSOut {
     @location(4) bitangent: vec3f,
 }
 
+
 struct Camera {
-    view: mat4x4f,
-    rotation: mat4x4f,
-    projection: mat4x4f,
     position: vec3f,
+    view: mat4x4f,
+    inv_view: mat4x4f,
+    proj: mat4x4f,
+    inv_proj: mat4x4f
 }
 
 @group(0) @binding(0) var<uniform> camera: Camera;
@@ -41,7 +43,7 @@ fn vs_main(
 
     var vertex_world_position = transform.model * vec4f(vertex.position, 1.0);
 
-    vsout.position = camera.projection * camera.view * vertex_world_position;
+    vsout.position = camera.proj * camera.view * vertex_world_position;
     vsout.uv = vertex.uv;
     vsout.world_position = vertex_world_position;
     vsout.normal = normalize((transform.normal * vec4f(vertex.normal, 1.0)).xyz);
@@ -106,7 +108,6 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
         var H = normalize(V + L);
 
         var attenuation = calc_attenuation(vsout, light);
-
         var radiance = light.color * attenuation;
 
          // Cook-Torrance BRDF
@@ -203,7 +204,7 @@ fn calc_geometry_Smith(N: vec3f, V: vec3f, L: vec3f, k: f32) -> f32 {
 }
 
 fn calc_fresnel_Schlick(cosTheta: f32, F0: vec3f) -> vec3f {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 fn get_albedo(uv: vec2f) -> vec3f {

@@ -1,6 +1,7 @@
 mod app;
 mod camera;
 mod entity;
+mod environment_map;
 mod gpu_context;
 mod layouts;
 mod light;
@@ -9,7 +10,6 @@ mod render_pass;
 mod render_world;
 mod resources;
 mod scene;
-mod skybox;
 mod surface_context;
 mod texture;
 mod transform;

@@ -11,7 +11,7 @@ pub struct Layouts {
     pub shadow_cube_map: BindGroupLayout,
     pub material: BindGroupLayout,
     pub light: BindGroupLayout,
-    pub skybox: BindGroupLayout,
+    pub sky: BindGroupLayout,
 }
 
 impl Layouts {
@@ -181,7 +181,7 @@ impl Layouts {
             ],
         });
 
-        let skybox = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let sky = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Skybox bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
@@ -209,7 +209,7 @@ impl Layouts {
             shadow_cube_map,
             material,
             light,
-            skybox,
+            sky,
         }
     }
 }

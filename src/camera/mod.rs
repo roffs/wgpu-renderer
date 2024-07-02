@@ -55,10 +55,6 @@ impl Camera {
         Matrix4::look_to_rh(self.position, self.look_dir, self.up)
     }
 
-    pub fn get_rotation(&self) -> cgmath::Matrix4<f32> {
-        Matrix4::look_to_rh((0.0, 0.0, 0.0).into(), self.look_dir, self.up)
-    }
-
     pub fn get_projection(&self) -> cgmath::Matrix4<f32> {
         perspective(Deg(self.fovy), self.aspect, self.near, self.far)
     }
