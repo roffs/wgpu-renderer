@@ -1,6 +1,9 @@
 use wgpu::{
-    Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState,
-    RenderPipeline, SurfaceConfiguration, TextureView, VertexState,
+    BlendState, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device,
+    FragmentState, FrontFace, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
+    PolygonMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
+    ShaderSource, StoreOp, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
@@ -16,9 +19,9 @@ pub struct SkyboxPass {
 
 impl SkyboxPass {
     pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> SkyboxPass {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
         });
 
         // PIPELINE
@@ -28,7 +31,7 @@ impl SkyboxPass {
             push_constant_ranges: &[],
         });
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Skybox render pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
@@ -41,19 +44,19 @@ impl SkyboxPass {
                 module: &shader,
                 entry_point: "fs_main",
                 compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
+                targets: &[Some(ColorTargetState {
                     format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
                 })],
             }),
             primitive: PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+                topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
+                front_face: FrontFace::Ccw,
                 cull_mode: None,
                 unclipped_depth: false,
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode: PolygonMode::Fill,
                 conservative: false,
             },
             depth_stencil: None,
@@ -72,24 +75,24 @@ impl SkyboxPass {
 impl RenderPass for SkyboxPass {
     fn draw(
         &self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        device: &Device,
+        queue: &Queue,
         view: &TextureView,
         world: &RenderWorld,
         camera: &ExtractedCamera,
     ) {
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Skybox render Encoder"),
         });
 
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Skybox render Pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            color_attachments: &[Some(RenderPassColorAttachment {
                 view,
                 resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
-                    store: wgpu::StoreOp::Store,
+                ops: Operations {
+                    load: LoadOp::Clear(Color::WHITE),
+                    store: StoreOp::Store,
                 },
             })],
             depth_stencil_attachment: None,
@@ -107,5 +110,5 @@ impl RenderPass for SkyboxPass {
         queue.submit(std::iter::once(encoder));
     }
 
-    fn resize(&mut self, _device: &wgpu::Device, _width: u32, _height: u32) {}
+    fn resize(&mut self, _device: &Device, _width: u32, _height: u32) {}
 }

@@ -3,7 +3,7 @@ use wgpu::Device;
 
 use crate::{camera::Camera, layouts::Layouts, light::PointLight, texture::CubeMap};
 
-use super::ExtractedCamera;
+use super::camera::ExtractedCamera;
 
 pub struct ExtractedPointLight {
     pub uniform: PointLightUniform,

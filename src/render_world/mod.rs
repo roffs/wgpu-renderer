@@ -1,24 +1,18 @@
-mod extracted_camera;
-mod extracted_env_map;
-mod extracted_material;
-mod extracted_mesh;
-mod extracted_point_light;
-mod extracted_transform;
+mod extracted;
 mod render_object;
 
 use cgmath::Matrix4;
-use extracted_env_map::ExtractedEnvMap;
-use extracted_material::{extract_material, ExtractedMaterial};
-use extracted_mesh::ExtractedMesh;
-use extracted_point_light::{ExtractedPointLight, PointLightUniform};
-use extracted_transform::ExtractedTransform;
+use extracted::{
+    ExtractedEnvMap, ExtractedMaterial, ExtractedMesh, ExtractedPointLight, ExtractedTransform,
+    PointLightUniform,
+};
 use render_object::{DrawRenderObject, RenderObject};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BufferDescriptor, BufferUsages, Device, Queue,
     RenderPass, Sampler, TextureView,
 };
 
-pub use extracted_camera::ExtractedCamera;
+pub use extracted::ExtractedCamera;
 
 use crate::{
     camera::Camera,
@@ -65,6 +59,9 @@ impl RenderWorld {
             .map(|l| ExtractedPointLight::new(device, layouts, l))
             .collect::<Vec<_>>();
         let env_map = ExtractedEnvMap::new(device, &layouts.sky, env_map);
+
+        // TODO move this somewhere else
+        // -----------------------------------------------------------------------------------
 
         // Create lights buffer
         let light_buffer_size = lights.len() * std::mem::size_of::<PointLightUniform>();
@@ -117,6 +114,7 @@ impl RenderWorld {
                 },
             ],
         });
+        // -----------------------------------------------------------------------------------
 
         RenderWorld {
             objects,
@@ -136,7 +134,7 @@ fn extract_entity_materials(
 ) -> Vec<ExtractedMaterial> {
     let mut entity_materials = vec![];
     for material in entity.get_materials() {
-        let extracted_material = extract_material(device, &layouts.material, material);
+        let extracted_material = ExtractedMaterial::new(device, &layouts.material, material);
         entity_materials.push(extracted_material);
     }
 

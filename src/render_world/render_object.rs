@@ -1,10 +1,6 @@
 use wgpu::RenderPass;
 
-use super::{
-    extracted_material::ExtractedMaterial,
-    extracted_mesh::{DrawMesh, ExtractedMesh},
-    extracted_transform::ExtractedTransform,
-};
+use super::extracted::{DrawMesh, ExtractedMaterial, ExtractedMesh, ExtractedTransform};
 
 pub struct RenderObject {
     mesh: ExtractedMesh,
