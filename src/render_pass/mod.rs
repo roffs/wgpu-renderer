@@ -5,7 +5,7 @@ mod skybox_pass;
 pub use self::{model_pass::ModelPass, shadow_pass::ShadowPass, skybox_pass::SkyboxPass};
 use wgpu::TextureView;
 
-use crate::render_world::RenderWorld;
+use crate::render_world::{ExtractedCamera, RenderWorld};
 
 pub trait RenderPass {
     fn draw(
@@ -14,6 +14,7 @@ pub trait RenderPass {
         queue: &wgpu::Queue,
         view: &TextureView,
         world: &RenderWorld,
+        camera: &ExtractedCamera,
     );
     fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32);
 }

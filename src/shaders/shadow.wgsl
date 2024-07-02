@@ -7,8 +7,15 @@ struct VSOut {
     @location(1) distance: f32,
 }
 
-@group(0) @binding(0) var<uniform> view: mat4x4f;
-@group(0) @binding(1) var<uniform> projection: mat4x4f;
+struct Camera {
+    position: vec3f,
+    view: mat4x4f,
+    inv_view: mat4x4f,
+    proj: mat4x4f,
+    inv_proj: mat4x4f
+}
+
+@group(0) @binding(0) var<uniform> camera: Camera;
 
 struct Transform {
     model: mat4x4f
@@ -21,12 +28,18 @@ fn vs_main(
     vertex: Vertex,    
 ) -> VSOut {
 
-    var vsout: VSOut;
+    let invert_x = mat4x4f(
+        vec4f(-1.0, 0.0, 0.0, 0.0),
+        vec4f( 0.0, 1.0, 0.0, 0.0),
+        vec4f( 0.0, 0.0, 1.0, 0.0),
+        vec4f(- 0.0, 0.0, 0.0, 1.0),
+    );
 
-    var camera_space_vertex_position = view * transform.model * vec4f(vertex.position, 1.0);
+    var vsout: VSOut;
+    var camera_space_vertex_position = camera.view * transform.model * vec4f(vertex.position, 1.0);
     
     vsout.distance = min(length(camera_space_vertex_position.xyz) / 25.0, 1.0); //TODO read zFar plane from a uniform?
-    vsout.position = projection * camera_space_vertex_position;
+    vsout.position = invert_x * camera.proj * camera_space_vertex_position;
 
     return vsout;
 }

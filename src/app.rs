@@ -162,9 +162,9 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new(device, (7.5, 5.0, -4.0), (1.0, 0.0, 0.0));
-        let second_light = PointLight::new(device, (-5.0, 4.0, 10.0), (0.0, 0.0, 1.0));
-        let third_light = PointLight::new(device, (0.0, 5.0, 0.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new((7.5, 5.0, -4.0), (1.0, 0.0, 0.0));
+        let second_light = PointLight::new((-5.0, 4.0, 10.0), (0.0, 0.0, 1.0));
+        let third_light = PointLight::new((0.0, 5.0, 0.0), (1.0, 1.0, 1.0));
 
         // SKYBOX
 
@@ -191,9 +191,9 @@ impl App {
             env_map,
         };
 
-        let model_pass = ModelPass::new(device, surface.config(), &layouts, &scene.lights);
+        let model_pass = ModelPass::new(device, surface.config(), &layouts);
         let skybox_pass = SkyboxPass::new(device, surface.config(), &layouts);
-        let shadow_pass = ShadowPass::new(device, surface.config(), &layouts, &scene.lights);
+        let shadow_pass = ShadowPass::new(device, surface.config(), &layouts);
 
         App {
             layouts,
@@ -267,6 +267,7 @@ impl App {
 
         let render_world = RenderWorld::extract(
             device,
+            queue,
             &self.layouts,
             &self.scene.entities,
             &self.camera,
@@ -274,9 +275,20 @@ impl App {
             &self.scene.env_map,
         );
 
-        self.shadow_pass.draw(device, queue, view, &render_world);
-        self.skybox_pass.draw(device, queue, view, &render_world);
-        self.model_pass.draw(device, queue, view, &render_world);
+        for light in render_world.lights.iter() {
+            let shadow_map = &light.shadow_map;
+
+            for (camera_index, camera) in light.shadow_cameras.iter().enumerate() {
+                let shadow_map_view = &shadow_map.create_face_view(camera_index);
+                self.shadow_pass
+                    .draw(device, queue, shadow_map_view, &render_world, camera);
+            }
+        }
+
+        self.skybox_pass
+            .draw(device, queue, view, &render_world, &render_world.camera);
+        self.model_pass
+            .draw(device, queue, view, &render_world, &render_world.camera);
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {

@@ -2,17 +2,23 @@ mod extracted_camera;
 mod extracted_env_map;
 mod extracted_material;
 mod extracted_mesh;
+mod extracted_point_light;
 mod extracted_transform;
 mod render_object;
 
 use cgmath::Matrix4;
-use extracted_camera::ExtractedCamera;
 use extracted_env_map::ExtractedEnvMap;
 use extracted_material::{extract_material, ExtractedMaterial};
 use extracted_mesh::ExtractedMesh;
+use extracted_point_light::{ExtractedPointLight, PointLightUniform};
 use extracted_transform::ExtractedTransform;
 use render_object::{DrawRenderObject, RenderObject};
-use wgpu::{Device, RenderPass};
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BufferDescriptor, BufferUsages, Device, Queue,
+    RenderPass, Sampler, TextureView,
+};
+
+pub use extracted_camera::ExtractedCamera;
 
 use crate::{
     camera::Camera,
@@ -22,23 +28,25 @@ use crate::{
     light::PointLight,
 };
 
-pub struct RenderWorld<'a> {
+pub struct RenderWorld {
     objects: Vec<RenderObject>,
     pub camera: ExtractedCamera,
     materials: Vec<ExtractedMaterial>,
-    pub lights: &'a Vec<PointLight>,
+    pub lights: Vec<ExtractedPointLight>,
+    pub lights_bind_group: BindGroup,
     pub env_map: ExtractedEnvMap,
 }
 
-impl<'a> RenderWorld<'a> {
+impl RenderWorld {
     pub fn extract(
         device: &Device,
+        queue: &Queue,
         layouts: &Layouts,
         entities: &[Entity],
         camera: &Camera,
-        lights: &'a Vec<PointLight>,
-        env_map: &'a EnvironmentMap,
-    ) -> RenderWorld<'a> {
+        lights: &[PointLight],
+        env_map: &EnvironmentMap,
+    ) -> RenderWorld {
         let mut materials = vec![];
         let mut objects = vec![];
 
@@ -52,13 +60,70 @@ impl<'a> RenderWorld<'a> {
         }
 
         let camera = ExtractedCamera::new(device, &layouts.camera, camera);
+        let lights = lights
+            .iter()
+            .map(|l| ExtractedPointLight::new(device, layouts, l))
+            .collect::<Vec<_>>();
         let env_map = ExtractedEnvMap::new(device, &layouts.sky, env_map);
+
+        // Create lights buffer
+        let light_buffer_size = lights.len() * std::mem::size_of::<PointLightUniform>();
+
+        let lights_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Model light buffer"),
+            size: light_buffer_size as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        // Put all lights data into lights buffer
+        let light_size = std::mem::size_of::<PointLightUniform>();
+        for (index, light) in lights.iter().enumerate() {
+            let light_data = unsafe {
+                std::slice::from_raw_parts(
+                    &light.uniform as *const PointLightUniform as *const u8,
+                    light_size,
+                )
+            };
+
+            queue.write_buffer(&lights_buffer, (light_size * index) as u64, light_data);
+        }
+
+        let view_array = lights
+            .iter()
+            .map(|light| &light.shadow_map.view)
+            .collect::<Vec<&TextureView>>();
+
+        let sampler_array = lights
+            .iter()
+            .map(|light| &light.shadow_map.sampler)
+            .collect::<Vec<&Sampler>>();
+
+        let lights_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Model light bind group"),
+            layout: &layouts.light,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: lights_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureViewArray(&view_array),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::SamplerArray(&sampler_array),
+                },
+            ],
+        });
 
         RenderWorld {
             objects,
             camera,
             materials,
             lights,
+            lights_bind_group,
             env_map,
         }
     }
@@ -170,7 +235,6 @@ impl<'a> DrawWorld<'a> for RenderPass<'a> {
     }
 
     fn draw_skybox(&mut self, world: &'a RenderWorld) {
-        self.set_bind_group(0, &world.camera, &[]);
         self.set_bind_group(1, &world.env_map, &[]);
         self.draw(0..3, 0..1)
     }

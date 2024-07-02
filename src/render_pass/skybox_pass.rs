@@ -5,7 +5,7 @@ use wgpu::{
 
 use crate::{
     layouts::Layouts,
-    render_world::{DrawWorld, RenderWorld},
+    render_world::{DrawWorld, ExtractedCamera, RenderWorld},
 };
 
 use super::RenderPass;
@@ -76,6 +76,7 @@ impl RenderPass for SkyboxPass {
         queue: &wgpu::Queue,
         view: &TextureView,
         world: &RenderWorld,
+        camera: &ExtractedCamera,
     ) {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Skybox render Encoder"),
@@ -97,6 +98,7 @@ impl RenderPass for SkyboxPass {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, camera, &[]);
         render_pass.draw_skybox(world);
 
         drop(render_pass);

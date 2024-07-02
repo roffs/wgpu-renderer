@@ -1,5 +1,5 @@
 mod camera_controller;
-use cgmath::{perspective, Angle, Deg, Matrix4, Point3, Rad, Vector3};
+use cgmath::{perspective, Angle, Deg, InnerSpace, Matrix4, Point3, Rad, Vector3};
 
 pub use camera_controller::CameraController;
 
@@ -30,14 +30,44 @@ impl Camera {
         near: f32,
         far: f32,
     ) -> Camera {
-        let position: Point3<f32> = position.into();
-        let yaw: Rad<f32> = yaw.into();
-        let pitch: Rad<f32> = pitch.into();
+        let yaw = yaw.into();
+        let pitch = pitch.into();
 
-        let (look_dir, up, right, forward) = calculate_local_directions(yaw, pitch);
+        let up = Vector3::new(0.0, 1.0, 0.0);
+        let (look_dir, right, forward) = calculate_local_directions(yaw, pitch, up);
 
         Camera {
-            position,
+            position: position.into(),
+            yaw,
+            pitch,
+            look_dir,
+            right,
+            up,
+            forward,
+            fovy,
+            aspect,
+            near,
+            far,
+        }
+    }
+
+    pub fn new_from_look_direction<U: Into<Point3<f32>>>(
+        position: U,
+        look_direction: Vector3<f32>,
+        up: Vector3<f32>,
+        fovy: f32,
+        aspect: f32,
+        near: f32,
+        far: f32,
+    ) -> Camera {
+        let look_direction = look_direction.normalize();
+
+        let pitch = Rad(look_direction.y.asin());
+        let yaw = Rad(look_direction.z.atan2(look_direction.x));
+        let (look_dir, right, forward) = calculate_local_directions(yaw, pitch, up);
+
+        Camera {
+            position: position.into(),
             yaw,
             pitch,
             look_dir,
@@ -64,10 +94,9 @@ impl Camera {
     }
 
     pub(self) fn update_directions(&mut self) {
-        let (look_dir, up, right, forward) = calculate_local_directions(self.yaw, self.pitch);
+        let (look_dir, right, forward) = calculate_local_directions(self.yaw, self.pitch, self.up);
 
         self.look_dir = look_dir;
-        self.up = up;
         self.right = right;
         self.forward = forward;
     }
@@ -76,15 +105,15 @@ impl Camera {
 fn calculate_local_directions(
     yaw: Rad<f32>,
     pitch: Rad<f32>,
-) -> (Vector3<f32>, Vector3<f32>, Vector3<f32>, Vector3<f32>) {
+    up: Vector3<f32>,
+) -> (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
     let x = yaw.cos() * pitch.cos();
     let y = pitch.sin();
     let z = yaw.sin() * pitch.cos();
 
     let look_dir = Vector3::new(x, y, z);
-    let up = Vector3::new(0.0, 1.0, 0.0);
     let right = look_dir.cross(up);
     let forward = up.cross(right);
 
-    (look_dir, up, right, forward)
+    (look_dir, right, forward)
 }

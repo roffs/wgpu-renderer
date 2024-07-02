@@ -1,15 +1,13 @@
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferDescriptor, BufferUsages,
     DepthBiasState, DepthStencilState, Device, FragmentState, MultisampleState, Operations,
     PipelineLayoutDescriptor, PrimitiveState, RenderPassDepthStencilAttachment, RenderPipeline,
-    Sampler, StencilState, SurfaceConfiguration, TextureView, VertexState,
+    StencilState, SurfaceConfiguration, TextureView, VertexState,
 };
 
 use crate::{
     entity::Vertex,
     layouts::Layouts,
-    light::{PointLight, PointLightRaw},
-    render_world::{DrawWorld, RenderWorld},
+    render_world::{DrawWorld, ExtractedCamera, RenderWorld},
     texture::{Texture, TextureType},
 };
 
@@ -18,59 +16,13 @@ use super::RenderPass;
 pub struct ModelPass {
     render_pipeline: RenderPipeline,
     depth_texture: Texture,
-    light_buffer: Buffer,
-    light_bind_group: BindGroup,
 }
 
 impl ModelPass {
-    pub fn new(
-        device: &Device,
-        config: &SurfaceConfiguration,
-        layouts: &Layouts,
-        lights: &[PointLight],
-    ) -> ModelPass {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> ModelPass {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
-        });
-
-        // LIGHT
-        let light_buffer_size = lights.len() * std::mem::size_of::<PointLightRaw>();
-
-        let light_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Model light buffer"),
-            size: light_buffer_size as u64,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let view_array = lights
-            .iter()
-            .map(|light| &light.shadow_map.view)
-            .collect::<Vec<&TextureView>>();
-
-        let sampler_array = lights
-            .iter()
-            .map(|light| &light.shadow_map.sampler)
-            .collect::<Vec<&Sampler>>();
-
-        let light_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Model light bind group"),
-            layout: &layouts.light,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: light_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureViewArray(&view_array),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::SamplerArray(&sampler_array),
-                },
-            ],
         });
 
         // DEPTH TEXTURE
@@ -140,8 +92,6 @@ impl ModelPass {
         ModelPass {
             render_pipeline,
             depth_texture,
-            light_buffer,
-            light_bind_group,
         }
     }
 }
@@ -153,19 +103,8 @@ impl RenderPass for ModelPass {
         queue: &wgpu::Queue,
         view: &TextureView,
         world: &RenderWorld,
+        camera: &ExtractedCamera,
     ) {
-        // UPDATE LIGHT BUFFER
-        let light_size = std::mem::size_of::<PointLightRaw>();
-
-        for (index, light) in world.lights.iter().enumerate() {
-            let light_data = unsafe {
-                let light = &light.to_raw();
-                std::slice::from_raw_parts(light as *const PointLightRaw as *const u8, light_size)
-            };
-
-            queue.write_buffer(&self.light_buffer, (light_size * index) as u64, light_data);
-        }
-
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Model render Encoder"),
         });
@@ -193,8 +132,8 @@ impl RenderPass for ModelPass {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &world.camera, &[]);
-        render_pass.set_bind_group(3, &self.light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera, &[]);
+        render_pass.set_bind_group(3, &world.lights_bind_group, &[]);
 
         render_pass.draw_world(world);
 

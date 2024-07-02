@@ -8,7 +8,6 @@ use wgpu::{
 pub struct Layouts {
     pub camera: BindGroupLayout,
     pub transform: BindGroupLayout,
-    pub shadow_cube_map: BindGroupLayout,
     pub material: BindGroupLayout,
     pub light: BindGroupLayout,
     pub sky: BindGroupLayout,
@@ -41,32 +40,6 @@ impl Layouts {
                 },
                 count: None,
             }],
-        });
-
-        let shadow_cube_map = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Shadow cubemap bind group layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX,
-                    ty: BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::VERTEX,
-                    ty: BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
         });
 
         let material = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -206,7 +179,6 @@ impl Layouts {
         Layouts {
             camera,
             transform,
-            shadow_cube_map,
             material,
             light,
             sky,

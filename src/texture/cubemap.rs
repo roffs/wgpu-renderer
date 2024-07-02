@@ -124,4 +124,16 @@ impl CubeMap {
 
         texture
     }
+
+    pub fn create_face_view(&self, face: usize) -> TextureView {
+        let view = self.texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some(format!("CubeMap view from face: {}", face).as_str()),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            base_array_layer: face as u32,
+            array_layer_count: Some(1),
+            ..Default::default()
+        });
+
+        view
+    }
 }

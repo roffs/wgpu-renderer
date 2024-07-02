@@ -16,10 +16,10 @@ pub struct ExtractedCamera {
 
 impl ExtractedCamera {
     pub fn new(device: &Device, layout: &BindGroupLayout, camera: &Camera) -> ExtractedCamera {
-        let camera_uniform = CameraUniform::from(camera);
-        let camera_uniform = unsafe {
+        let uniform = CameraUniform::from(camera);
+        let uniform = unsafe {
             std::slice::from_raw_parts(
-                &camera_uniform as *const CameraUniform as *const u8,
+                &uniform as *const CameraUniform as *const u8,
                 std::mem::size_of::<CameraUniform>(),
             )
         };
@@ -27,7 +27,7 @@ impl ExtractedCamera {
         let buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Model camera buffer"),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            contents: camera_uniform,
+            contents: uniform,
         });
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
