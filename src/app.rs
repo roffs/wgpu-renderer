@@ -162,9 +162,9 @@ impl App {
 
         // LIGHT
 
-        let light = PointLight::new((7.5, 5.0, -4.0), (1.0, 0.0, 0.0));
-        let second_light = PointLight::new((-5.0, 4.0, 10.0), (0.0, 0.0, 1.0));
-        let third_light = PointLight::new((0.0, 5.0, 0.0), (1.0, 1.0, 1.0));
+        let light = PointLight::new((7.5, 5.0, -4.0), (10.0, 0.0, 0.0));
+        let second_light = PointLight::new((-5.0, 4.0, 10.0), (0.0, 0.0, 10.0));
+        let third_light = PointLight::new((0.0, 5.0, 0.0), (10.0, 10.0, 10.0));
 
         // SKYBOX
 

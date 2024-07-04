@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use cgmath::{Vector2, Vector3};
+use cgmath::{InnerSpace, Vector2, Vector3};
 use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use wgpu::{Device, Queue};
 
@@ -105,13 +105,17 @@ impl Resources {
                 .map(|v| v.into_f32())
                 .unwrap()
                 .collect::<Vec<_>>();
+
             let normals = reader.read_normals().unwrap().collect::<Vec<_>>();
+
             let tangents = reader
                 .read_tangents()
                 .map(|iter| iter.map(|t| [t[0], t[1], t[2]]).collect::<Vec<_>>());
 
             let tangents = tangents.unwrap_or_else(|| {
-                let mut tangents = vec![[0.0; 3]; positions.len()];
+                let mut tangents = vec![Vector3::<f32>::new(0.0, 0.0, 0.0); positions.len()];
+                let mut times_used = vec![0.0; positions.len()];
+
                 for i in indices.chunks(3) {
                     let i1 = i[0] as usize;
                     let i2 = i[1] as usize;
@@ -132,14 +136,30 @@ impl Resources {
                     let delta_uv2 = uv2 - uv0;
 
                     let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
-                    let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
-                    let tangent: [f32; 3] = tangent.into();
-                    // let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * -r;
+                    let mut tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
+                    let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * r;
 
-                    tangents[i1] = tangent;
-                    tangents[i2] = tangent;
-                    tangents[i3] = tangent;
+                    // Flip tangent if uvs are mirrored
+                    if Vector3::from(normals[i1]).dot(tangent.cross(bitangent)) < 0.0 {
+                        tangent.x *= -1.0;
+                    }
+
+                    tangents[i1] += tangent;
+                    tangents[i2] += tangent;
+                    tangents[i3] += tangent;
+
+                    times_used[i1] += 1.0;
+                    times_used[i2] += 1.0;
+                    times_used[i3] += 1.0;
                 }
+
+                // Average tangents of vertices that appear in multiple triangles
+                let tangents = tangents
+                    .into_iter()
+                    .zip(times_used.iter())
+                    .map(|(tangent, times_used)| (tangent / *times_used).normalize().into())
+                    .collect::<Vec<[f32; 3]>>();
+
                 tangents
             });
 

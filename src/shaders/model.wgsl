@@ -48,6 +48,8 @@ fn vs_main(
     vsout.world_position = vertex_world_position;
     vsout.normal = normalize((transform.normal * vec4f(vertex.normal, 1.0)).xyz);
     vsout.tangent = normalize((transform.normal * vec4f(vertex.tangent, 1.0)).xyz);
+    // re-orthogonalize tangent with respect to normal
+    vsout.tangent = normalize(vsout.tangent - dot(vsout.tangent, vsout.normal) * vsout.normal);
     vsout.bitangent = cross(vsout.normal, vsout.tangent);
     
     return vsout;
@@ -95,8 +97,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var N = normal;
     var V = normalize(camera.position - world_position);
 
-    var F0 = vec3f(0.04); 
-    F0 = mix(F0, albedo, metalness);
+    var F0 = mix(vec3f(0.04), albedo, metalness);
 
     // reflectance equation
     var Lo = vec3f(0.0);
@@ -223,9 +224,9 @@ fn get_normal(vsout: VSOut) -> vec3f {
         var tbn_matrix = mat3x3f(vsout.tangent, vsout.bitangent, vsout.normal);
         normal = textureSample(normalTexture, normalSampler, vsout.uv).xyz;
         normal = normal * 2.0 - 1.0;
-        normal = tbn_matrix * normal;
+        normal = normalize(tbn_matrix * normal);
     } else {
-        normal = normalize(vsout.normal);
+        normal = vsout.normal;
     }
     return normal;
 }
