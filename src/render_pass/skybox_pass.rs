@@ -9,7 +9,7 @@ use crate::{
     render_world::{DrawWorld, ExtractedCamera, RenderWorld},
 };
 
-use super::{pipeline::create_pipeline, RenderPass};
+use super::pipeline::create_pipeline;
 
 pub struct SkyboxPass {
     pipeline: RenderPipeline,
@@ -22,7 +22,6 @@ impl SkyboxPass {
             source: ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
         });
 
-        // PIPELINE
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Skybox pipeline layout"),
             bind_group_layouts: &[&layouts.camera, &layouts.cube_map],
@@ -33,10 +32,8 @@ impl SkyboxPass {
 
         SkyboxPass { pipeline }
     }
-}
 
-impl RenderPass for SkyboxPass {
-    fn draw(
+    pub fn draw(
         &self,
         device: &Device,
         queue: &Queue,
@@ -72,6 +69,4 @@ impl RenderPass for SkyboxPass {
 
         queue.submit(std::iter::once(encoder));
     }
-
-    fn resize(&mut self, _device: &Device, _width: u32, _height: u32) {}
 }

@@ -16,7 +16,7 @@ use crate::{
     layouts::Layouts,
     light::PointLight,
     material::Material,
-    render_pass::{ModelPass, RenderPass, ShadowPass, SkyboxPass},
+    render_pass::{ModelPass, ShadowPass, SkyboxPass},
     render_world::RenderWorld,
     resources::Resources,
     scene::Scene,
@@ -285,7 +285,7 @@ impl App {
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.camera.update_aspect(width as f32 / height as f32);
 
-        self.skybox_pass.resize(device, width, height);
+        // self.skybox_pass.resize(device, width, height);
         self.model_pass.resize(device, width, height);
     }
 

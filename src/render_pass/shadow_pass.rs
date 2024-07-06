@@ -12,7 +12,7 @@ use crate::{
     texture::{Texture, TextureType},
 };
 
-use super::{pipeline::create_pipeline, RenderPass};
+use super::pipeline::create_pipeline;
 
 pub struct ShadowPass {
     pipeline: RenderPipeline,
@@ -32,7 +32,6 @@ impl ShadowPass {
             push_constant_ranges: &[],
         });
 
-        // DEPTH TEXTURE
         let depth_texture = Texture::new(
             device,
             1024,
@@ -55,10 +54,8 @@ impl ShadowPass {
             depth_texture,
         }
     }
-}
 
-impl RenderPass for ShadowPass {
-    fn draw(
+    pub fn draw(
         &self,
         device: &Device,
         queue: &Queue,
@@ -102,6 +99,4 @@ impl RenderPass for ShadowPass {
 
         queue.submit(std::iter::once(encoder));
     }
-
-    fn resize(&mut self, _device: &Device, _width: u32, _height: u32) {}
 }

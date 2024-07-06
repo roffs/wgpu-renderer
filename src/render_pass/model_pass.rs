@@ -12,7 +12,7 @@ use crate::{
     texture::{Texture, TextureType},
 };
 
-use super::{pipeline::create_pipeline, RenderPass};
+use super::pipeline::create_pipeline;
 
 pub struct ModelPass {
     pipeline: RenderPipeline,
@@ -61,10 +61,8 @@ impl ModelPass {
             depth_texture,
         }
     }
-}
 
-impl RenderPass for ModelPass {
-    fn draw(
+    pub fn draw(
         &self,
         device: &Device,
         queue: &Queue,
@@ -110,7 +108,7 @@ impl RenderPass for ModelPass {
         queue.submit(std::iter::once(encoder));
     }
 
-    fn resize(&mut self, device: &Device, width: u32, height: u32) {
+    pub fn resize(&mut self, device: &Device, width: u32, height: u32) {
         self.depth_texture = Texture::new(
             device,
             width,
