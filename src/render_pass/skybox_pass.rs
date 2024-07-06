@@ -17,10 +17,10 @@ pub struct SkyboxPass {
 
 impl SkyboxPass {
     pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> SkyboxPass {
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
+        let shader = ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
-        });
+        };
 
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Skybox pipeline layout"),
@@ -28,7 +28,7 @@ impl SkyboxPass {
             push_constant_ranges: &[],
         });
 
-        let pipeline = create_pipeline(device, &layout, &[], config.format, None, &shader);
+        let pipeline = create_pipeline(device, &layout, &[], config.format, None, shader);
 
         SkyboxPass { pipeline }
     }

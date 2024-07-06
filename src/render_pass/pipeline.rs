@@ -1,8 +1,8 @@
 use wgpu::{
     ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState, Device,
     Face, FragmentState, FrontFace, MultisampleState, PipelineLayout, PolygonMode, PrimitiveState,
-    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule, StencilState,
-    TextureFormat, VertexBufferLayout, VertexState,
+    PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
+    StencilState, TextureFormat, VertexBufferLayout, VertexState,
 };
 
 pub fn create_pipeline(
@@ -11,19 +11,21 @@ pub fn create_pipeline(
     vertex_layout: &[VertexBufferLayout],
     color_format: TextureFormat,
     depth_format: Option<wgpu::TextureFormat>,
-    shader: &ShaderModule,
+    shader: ShaderModuleDescriptor,
 ) -> RenderPipeline {
+    let shader = device.create_shader_module(shader);
+
     device.create_render_pipeline(&RenderPipelineDescriptor {
         label: Some("HDR pipeline"),
         layout: Some(layout),
         vertex: VertexState {
-            module: shader,
+            module: &shader,
             entry_point: "vs_main",
             compilation_options: Default::default(),
             buffers: vertex_layout,
         },
         fragment: Some(FragmentState {
-            module: shader,
+            module: &shader,
             entry_point: "fs_main",
             compilation_options: Default::default(),
             targets: &[Some(ColorTargetState {

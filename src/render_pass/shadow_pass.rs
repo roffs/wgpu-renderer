@@ -21,10 +21,10 @@ pub struct ShadowPass {
 
 impl ShadowPass {
     pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> ShadowPass {
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
+        let shader = ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/shadow.wgsl").into()),
-        });
+        };
 
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
@@ -46,7 +46,7 @@ impl ShadowPass {
             &[Vertex::desc()],
             config.format,
             Some(Texture::DEPTH_FORMAT),
-            &shader,
+            shader,
         );
 
         ShadowPass {

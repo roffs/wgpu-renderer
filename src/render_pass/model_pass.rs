@@ -21,10 +21,10 @@ pub struct ModelPass {
 
 impl ModelPass {
     pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> ModelPass {
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
+        let shader = ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/model.wgsl").into()),
-        });
+        };
 
         // DEPTH TEXTURE
         let depth_texture = Texture::new(
@@ -53,7 +53,7 @@ impl ModelPass {
             &[Vertex::desc()],
             config.format,
             Some(Texture::DEPTH_FORMAT),
-            &shader,
+            shader,
         );
 
         ModelPass {
