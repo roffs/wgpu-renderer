@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use image::io::Reader;
-use wgpu::{Device, Queue};
+use wgpu::{Device, Queue, TextureFormat};
 
-use crate::texture::{CubeMap, Texture, TextureType};
+use crate::texture::{CubeMap, Texture};
 
 use super::Resources;
 
@@ -12,7 +12,7 @@ impl Resources {
         device: &Device,
         queue: &Queue,
         path: &Path,
-        texturey_type: TextureType,
+        format: TextureFormat,
     ) -> Texture {
         let image = Reader::open(path).unwrap().decode().unwrap();
 
@@ -30,7 +30,7 @@ impl Resources {
             height,
             &data,
             Some(label.as_str()),
-            texturey_type,
+            format,
         )
     }
 

@@ -1,9 +1,6 @@
-use wgpu::{Device, Operations, Queue, ShaderModuleDescriptor, ShaderSource};
+use wgpu::{Device, Operations, Queue, ShaderModuleDescriptor, ShaderSource, TextureUsages};
 
-use crate::{
-    layouts::Layouts,
-    texture::{Texture, TextureType},
-};
+use crate::{layouts::Layouts, texture::Texture};
 
 use super::pipeline::create_pipeline;
 
@@ -25,10 +22,17 @@ impl HdrPipeline {
         let width = config.width;
         let height = config.height;
 
-        let texture = Texture::new(device, width, height, Some("HDR texture"), TextureType::Hdr);
+        let texture = Texture::new(
+            device,
+            width,
+            height,
+            Some("HDR texture"),
+            Texture::RGBA_16_FLOAT,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
+        );
 
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Hdr::layout"),
+            label: Some("Hdr layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -51,7 +55,7 @@ impl HdrPipeline {
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Hdr::bind_group"),
+            label: Some("Hdr bind group"),
             layout: &layouts.texture,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -97,10 +101,17 @@ impl HdrPipeline {
 
     /// Resize the HDR texture
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        self.texture = Texture::new(device, width, height, Some("HDR texture"), TextureType::Hdr);
+        self.texture = Texture::new(
+            device,
+            width,
+            height,
+            Some("HDR texture"),
+            Texture::RGBA_16_FLOAT,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
+        );
 
         self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Hdr::bind_group"),
+            label: Some("Hdr bind group"),
             layout: &self.layout,
             entries: &[
                 wgpu::BindGroupEntry {

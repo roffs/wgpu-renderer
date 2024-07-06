@@ -16,7 +16,7 @@ pub fn create_pipeline(
     let shader = device.create_shader_module(shader);
 
     device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: Some("HDR pipeline"),
+        label: Some("Pipeline"),
         layout: Some(layout),
         vertex: VertexState {
             module: &shader,

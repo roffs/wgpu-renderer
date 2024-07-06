@@ -4,14 +4,14 @@ use wgpu::{
     MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
     PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
-    ShaderSource, StencilState, StoreOp, TextureView, VertexState,
+    ShaderSource, StencilState, StoreOp, TextureUsages, TextureView, VertexState,
 };
 
 use crate::{
     entity::Vertex,
     layouts::Layouts,
     render_world::{DrawWorld, ExtractedCamera, RenderWorld},
-    texture::{Texture, TextureType},
+    texture::Texture,
 };
 
 pub struct ShadowPass {
@@ -38,7 +38,8 @@ impl ShadowPass {
             1024,
             1024,
             Some("Depth texture"),
-            TextureType::Depth,
+            Texture::DEPTH_32_FLOAT,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
         );
 
         //TODO use custom create_pipeline to create this one too
@@ -56,7 +57,7 @@ impl ShadowPass {
                 entry_point: "fs_main",
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
-                    format: Texture::DIFFUSE_FORMAT,
+                    format: Texture::SRGBA_UNORM,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 })],
@@ -71,7 +72,7 @@ impl ShadowPass {
                 conservative: false,
             },
             depth_stencil: Some(DepthStencilState {
-                format: Texture::DEPTH_FORMAT,
+                format: Texture::DEPTH_32_FLOAT,
                 depth_write_enabled: true,
                 depth_compare: CompareFunction::Less,
                 stencil: StencilState::default(),

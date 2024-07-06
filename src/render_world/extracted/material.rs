@@ -5,10 +5,7 @@ use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device,
 };
 
-use crate::{
-    material::Material,
-    texture::{Texture, TextureType},
-};
+use crate::{material::Material, texture::Texture};
 
 pub struct ExtractedMaterial {
     bind_group: BindGroup,
@@ -41,7 +38,14 @@ impl ExtractedMaterial {
             contents: uniform_data,
         });
 
-        let empty_texture = Texture::new(device, 1, 1, None, TextureType::Diffuse);
+        let empty_texture = Texture::new(
+            device,
+            1,
+            1,
+            None,
+            Texture::SRGBA_UNORM,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        );
 
         let base_texture = match &material.base_texture {
             Some(texture) => texture,

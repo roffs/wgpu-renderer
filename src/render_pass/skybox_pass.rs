@@ -29,7 +29,7 @@ impl SkyboxPass {
             push_constant_ranges: &[],
         });
 
-        let pipeline = create_pipeline(device, &layout, &[], Texture::HDR_FORMAT, None, shader);
+        let pipeline = create_pipeline(device, &layout, &[], Texture::RGBA_16_FLOAT, None, shader);
 
         SkyboxPass { pipeline }
     }

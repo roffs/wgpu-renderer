@@ -2,14 +2,14 @@ use wgpu::{
     CommandEncoderDescriptor, Device, LoadOp, Operations, PipelineLayoutDescriptor, Queue,
     RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
     RenderPipeline, ShaderModuleDescriptor, ShaderSource, StoreOp, SurfaceConfiguration,
-    TextureView,
+    TextureUsages, TextureView,
 };
 
 use crate::{
     entity::Vertex,
     layouts::Layouts,
     render_world::{DrawWorld, ExtractedCamera, RenderWorld},
-    texture::{Texture, TextureType},
+    texture::Texture,
 };
 
 use super::pipeline::create_pipeline;
@@ -32,7 +32,8 @@ impl ModelPass {
             config.width,
             config.height,
             Some("Depth texture"),
-            TextureType::Depth,
+            Texture::DEPTH_32_FLOAT,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
         );
 
         // PIPELINE
@@ -51,8 +52,8 @@ impl ModelPass {
             device,
             &pipeline_layout,
             &[Vertex::desc()],
-            Texture::HDR_FORMAT,
-            Some(Texture::DEPTH_FORMAT),
+            Texture::RGBA_16_FLOAT,
+            Some(Texture::DEPTH_32_FLOAT),
             shader,
         );
 
@@ -114,7 +115,8 @@ impl ModelPass {
             width,
             height,
             Some("Depth texture"),
-            TextureType::Depth,
+            Texture::DEPTH_32_FLOAT,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
         );
     }
 }

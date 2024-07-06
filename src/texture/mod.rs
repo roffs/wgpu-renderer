@@ -2,62 +2,38 @@ mod cubemap;
 
 use wgpu::{
     Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler,
-    TextureDescriptor, TextureView,
+    TextureDescriptor, TextureFormat, TextureUsages, TextureView,
 };
 
 pub use cubemap::CubeMap;
-
-pub enum TextureType {
-    Diffuse,
-    Normal,
-    Depth,
-    Hdr,
-}
 
 #[derive(Debug)]
 pub struct Texture {
     texture: wgpu::Texture,
     pub view: TextureView,
     pub sampler: Sampler,
+    pub format: wgpu::TextureFormat,
 }
 
 // TODO: Refactor texture
 impl Texture {
-    pub const DIFFUSE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-    pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
-    pub const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+    pub const SRGBA_UNORM: TextureFormat = TextureFormat::Rgba8UnormSrgb;
+    pub const RGBA_UNORM: TextureFormat = TextureFormat::Rgba8Unorm;
+    pub const DEPTH_32_FLOAT: TextureFormat = TextureFormat::Depth32Float;
+    pub const RGBA_16_FLOAT: TextureFormat = TextureFormat::Rgba16Float;
 
     pub fn new(
         device: &Device,
         width: u32,
         height: u32,
         label: Option<&str>,
-        texture_type: TextureType,
+        format: TextureFormat,
+        usage: TextureUsages,
     ) -> Texture {
         let size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
-        };
-
-        let (format, usage) = match texture_type {
-            TextureType::Diffuse => (
-                Texture::DIFFUSE_FORMAT,
-                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            ),
-            TextureType::Normal => (
-                Texture::NORMAL_FORMAT,
-                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            ),
-            TextureType::Depth => (
-                Texture::DEPTH_FORMAT,
-                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            ),
-            TextureType::Hdr => (
-                Texture::HDR_FORMAT,
-                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            ),
         };
 
         let texture = device.create_texture(&TextureDescriptor {
@@ -86,6 +62,7 @@ impl Texture {
             texture,
             view,
             sampler,
+            format,
         }
     }
 
@@ -114,9 +91,16 @@ impl Texture {
         height: u32,
         data: &[u8],
         label: Option<&str>,
-        texture_type: TextureType,
+        format: TextureFormat,
     ) -> Texture {
-        let texture = Texture::new(device, width, height, label, texture_type);
+        let texture = Texture::new(
+            device,
+            width,
+            height,
+            label,
+            format,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+        );
         texture.write(queue, data);
 
         texture
