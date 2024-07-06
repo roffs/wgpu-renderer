@@ -1,8 +1,7 @@
 use wgpu::{
     Color, CommandEncoderDescriptor, Device, LoadOp, Operations, PipelineLayoutDescriptor, Queue,
     RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
-    RenderPipeline, ShaderModuleDescriptor, ShaderSource, StoreOp, SurfaceConfiguration,
-    TextureView,
+    RenderPipeline, ShaderModuleDescriptor, ShaderSource, StoreOp, TextureView,
 };
 
 use crate::{
@@ -20,7 +19,7 @@ pub struct ShadowPass {
 }
 
 impl ShadowPass {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> ShadowPass {
+    pub fn new(device: &Device, layouts: &Layouts) -> ShadowPass {
         let shader = ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/shadow.wgsl").into()),
@@ -44,7 +43,7 @@ impl ShadowPass {
             device,
             &layout,
             &[Vertex::desc()],
-            config.format,
+            Texture::DIFFUSE_FORMAT,
             Some(Texture::DEPTH_FORMAT),
             shader,
         );

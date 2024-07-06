@@ -16,7 +16,7 @@ use crate::{
     layouts::Layouts,
     light::PointLight,
     material::Material,
-    render_pass::{ModelPass, ShadowPass, SkyboxPass},
+    render_pass::{HdrPipeline, ModelPass, ShadowPass, SkyboxPass},
     render_world::RenderWorld,
     resources::Resources,
     scene::Scene,
@@ -33,6 +33,7 @@ pub struct App {
     model_pass: ModelPass,
     skybox_pass: SkyboxPass,
     shadow_pass: ShadowPass,
+    hdr_pipeline: HdrPipeline,
 }
 
 impl App {
@@ -192,8 +193,10 @@ impl App {
         };
 
         let model_pass = ModelPass::new(device, surface.config(), &layouts);
-        let skybox_pass = SkyboxPass::new(device, surface.config(), &layouts);
-        let shadow_pass = ShadowPass::new(device, surface.config(), &layouts);
+        let skybox_pass = SkyboxPass::new(device, &layouts);
+        let shadow_pass = ShadowPass::new(device, &layouts);
+
+        let hdr_pipeline = HdrPipeline::new(device, surface.config(), &layouts);
 
         App {
             layouts,
@@ -203,6 +206,7 @@ impl App {
             model_pass,
             skybox_pass,
             shadow_pass,
+            hdr_pipeline,
         }
     }
 
@@ -276,17 +280,29 @@ impl App {
         );
 
         self.generate_shadow_maps(device, queue, &render_world);
-        self.skybox_pass
-            .draw(device, queue, view, &render_world, &render_world.camera);
-        self.model_pass
-            .draw(device, queue, view, &render_world, &render_world.camera);
+        self.skybox_pass.draw(
+            device,
+            queue,
+            self.hdr_pipeline.view(),
+            &render_world,
+            &render_world.camera,
+        );
+        self.model_pass.draw(
+            device,
+            queue,
+            self.hdr_pipeline.view(),
+            &render_world,
+            &render_world.camera,
+        );
+
+        self.hdr_pipeline.process(device, queue, view);
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.camera.update_aspect(width as f32 / height as f32);
 
-        // self.skybox_pass.resize(device, width, height);
         self.model_pass.resize(device, width, height);
+        self.hdr_pipeline.resize(device, width, height);
     }
 
     fn generate_shadow_maps(

@@ -51,7 +51,7 @@ impl ModelPass {
             device,
             &pipeline_layout,
             &[Vertex::desc()],
-            config.format,
+            Texture::HDR_FORMAT,
             Some(Texture::DEPTH_FORMAT),
             shader,
         );

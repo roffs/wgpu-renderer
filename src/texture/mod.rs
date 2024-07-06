@@ -11,6 +11,7 @@ pub enum TextureType {
     Diffuse,
     Normal,
     Depth,
+    Hdr,
 }
 
 #[derive(Debug)]
@@ -25,6 +26,7 @@ impl Texture {
     pub const DIFFUSE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
     pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+    pub const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     pub fn new(
         device: &Device,
@@ -50,6 +52,10 @@ impl Texture {
             ),
             TextureType::Depth => (
                 Texture::DEPTH_FORMAT,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            ),
+            TextureType::Hdr => (
+                Texture::HDR_FORMAT,
                 wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             ),
         };

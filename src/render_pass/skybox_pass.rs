@@ -1,12 +1,13 @@
 use wgpu::{
     Color, CommandEncoderDescriptor, Device, LoadOp, Operations, PipelineLayoutDescriptor, Queue,
     RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, ShaderModuleDescriptor,
-    ShaderSource, StoreOp, SurfaceConfiguration, TextureView,
+    ShaderSource, StoreOp, TextureView,
 };
 
 use crate::{
     layouts::Layouts,
     render_world::{DrawWorld, ExtractedCamera, RenderWorld},
+    texture::Texture,
 };
 
 use super::pipeline::create_pipeline;
@@ -16,7 +17,7 @@ pub struct SkyboxPass {
 }
 
 impl SkyboxPass {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, layouts: &Layouts) -> SkyboxPass {
+    pub fn new(device: &Device, layouts: &Layouts) -> SkyboxPass {
         let shader = ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/skybox.wgsl").into()),
@@ -28,7 +29,7 @@ impl SkyboxPass {
             push_constant_ranges: &[],
         });
 
-        let pipeline = create_pipeline(device, &layout, &[], config.format, None, shader);
+        let pipeline = create_pipeline(device, &layout, &[], Texture::HDR_FORMAT, None, shader);
 
         SkyboxPass { pipeline }
     }
