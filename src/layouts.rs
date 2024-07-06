@@ -10,13 +10,14 @@ pub struct Layouts {
     pub transform: BindGroupLayout,
     pub material: BindGroupLayout,
     pub light: BindGroupLayout,
-    pub sky: BindGroupLayout,
+    pub cube_map: BindGroupLayout,
+    pub texture: BindGroupLayout,
 }
 
 impl Layouts {
     pub fn new(device: &Device) -> Layouts {
         let camera = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Transform bind group layout"),
+            label: Some("Camera bind group layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
                 visibility: ShaderStages::all(),
@@ -154,8 +155,9 @@ impl Layouts {
             ],
         });
 
-        let sky = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Skybox bind group layout"),
+        // TODO: Put view before sampler for consistency
+        let cube_map = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Cube map bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -176,12 +178,35 @@ impl Layouts {
             ],
         });
 
+        let texture = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Texture bind group layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
         Layouts {
             camera,
             transform,
             material,
             light,
-            sky,
+            cube_map,
+            texture,
         }
     }
 }

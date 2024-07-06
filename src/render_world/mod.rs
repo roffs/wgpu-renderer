@@ -58,7 +58,7 @@ impl RenderWorld {
             .iter()
             .map(|l| ExtractedPointLight::new(device, layouts, l))
             .collect::<Vec<_>>();
-        let env_map = ExtractedEnvMap::new(device, &layouts.sky, env_map);
+        let env_map = ExtractedEnvMap::new(device, &layouts.cube_map, env_map);
 
         // TODO move this somewhere else
         // -----------------------------------------------------------------------------------

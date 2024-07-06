@@ -27,7 +27,7 @@ fn main() {
     let context = GpuContext::new(&surface);
     surface.init(&context, window_loop.window.clone());
 
-    let mut temp = App::new(&context, &surface);
+    let mut app = App::new(&context, &surface);
 
     window_loop
         .event_loop
@@ -45,7 +45,7 @@ fn main() {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
-                temp.render(&context.device, &context.queue, &view);
+                app.render(&context.device, &context.queue, &view);
 
                 output.present();
             }
@@ -58,11 +58,11 @@ fn main() {
 
                 if width > 0 && height > 0 {
                     surface.configure(&context.device, width, height);
-                    temp.resize(&context.device, width, height);
+                    app.resize(&context.device, width, height);
                 }
             }
             Event::AboutToWait => window_loop.window.request_redraw(),
-            event => temp.update(event, elwt),
+            event => app.update(event, elwt),
         })
         .unwrap();
 }

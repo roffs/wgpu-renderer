@@ -20,6 +20,7 @@ pub struct Texture {
     pub sampler: Sampler,
 }
 
+// TODO: Refactor texture
 impl Texture {
     pub const DIFFUSE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
     pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;

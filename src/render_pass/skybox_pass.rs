@@ -1,9 +1,7 @@
 use wgpu::{
-    BlendState, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device,
-    FragmentState, FrontFace, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
-    PolygonMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
-    ShaderSource, StoreOp, SurfaceConfiguration, TextureView, VertexState,
+    Color, CommandEncoderDescriptor, Device, LoadOp, Operations, PipelineLayoutDescriptor, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, ShaderModuleDescriptor,
+    ShaderSource, StoreOp, SurfaceConfiguration, TextureView,
 };
 
 use crate::{
@@ -11,10 +9,10 @@ use crate::{
     render_world::{DrawWorld, ExtractedCamera, RenderWorld},
 };
 
-use super::RenderPass;
+use super::{pipeline::create_pipeline, RenderPass};
 
 pub struct SkyboxPass {
-    render_pipeline: RenderPipeline,
+    pipeline: RenderPipeline,
 }
 
 impl SkyboxPass {
@@ -25,50 +23,15 @@ impl SkyboxPass {
         });
 
         // PIPELINE
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Skybox pipeline layout"),
-            bind_group_layouts: &[&layouts.camera, &layouts.sky],
+            bind_group_layouts: &[&layouts.camera, &layouts.cube_map],
             push_constant_ranges: &[],
         });
 
-        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Skybox render pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: None,
-                unclipped_depth: false,
-                polygon_mode: PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
+        let pipeline = create_pipeline(device, &layout, &[], config.format, None, &shader);
 
-        SkyboxPass { render_pipeline }
+        SkyboxPass { pipeline }
     }
 }
 
@@ -100,7 +63,7 @@ impl RenderPass for SkyboxPass {
             timestamp_writes: None,
         });
 
-        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, camera, &[]);
         render_pass.draw_skybox(world);
 

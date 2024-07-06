@@ -1,10 +1,8 @@
 use wgpu::{
-    BlendState, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, CompareFunction,
-    DepthBiasState, DepthStencilState, Device, Face, FragmentState, FrontFace, LoadOp,
-    MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
-    PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
-    ShaderSource, StencilState, StoreOp, SurfaceConfiguration, TextureView, VertexState,
+    Color, CommandEncoderDescriptor, Device, LoadOp, Operations, PipelineLayoutDescriptor, Queue,
+    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
+    RenderPipeline, ShaderModuleDescriptor, ShaderSource, StoreOp, SurfaceConfiguration,
+    TextureView,
 };
 
 use crate::{
@@ -14,7 +12,7 @@ use crate::{
     texture::{Texture, TextureType},
 };
 
-use super::RenderPass;
+use super::{pipeline::create_pipeline, RenderPass};
 
 pub struct ShadowPass {
     pipeline: RenderPipeline,
@@ -28,7 +26,7 @@ impl ShadowPass {
             source: ShaderSource::Wgsl(include_str!("../shaders/shadow.wgsl").into()),
         });
 
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline layout"),
             bind_group_layouts: &[&layouts.camera, &layouts.transform],
             push_constant_ranges: &[],
@@ -43,44 +41,14 @@ impl ShadowPass {
             TextureType::Depth,
         );
 
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &[Vertex::desc()],
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Cw,
-                cull_mode: Some(Face::Back),
-                unclipped_depth: true,
-                polygon_mode: PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: Some(DepthStencilState {
-                format: Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: CompareFunction::Less,
-                stencil: StencilState::default(),
-                bias: DepthBiasState::default(),
-            }),
-            multisample: MultisampleState::default(),
-            multiview: None,
-        });
+        let pipeline = create_pipeline(
+            device,
+            &layout,
+            &[Vertex::desc()],
+            config.format,
+            Some(Texture::DEPTH_FORMAT),
+            &shader,
+        );
 
         ShadowPass {
             pipeline,

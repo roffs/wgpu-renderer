@@ -1,4 +1,5 @@
 mod model_pass;
+mod pipeline;
 mod shadow_pass;
 mod skybox_pass;
 

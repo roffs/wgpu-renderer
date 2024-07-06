@@ -1,10 +1,8 @@
 use wgpu::{
-    BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, CompareFunction,
-    DepthBiasState, DepthStencilState, Device, Face, FragmentState, FrontFace, LoadOp,
-    MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
-    PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor,
-    ShaderSource, StencilState, StoreOp, SurfaceConfiguration, TextureView, VertexState,
+    CommandEncoderDescriptor, Device, LoadOp, Operations, PipelineLayoutDescriptor, Queue,
+    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
+    RenderPipeline, ShaderModuleDescriptor, ShaderSource, StoreOp, SurfaceConfiguration,
+    TextureView,
 };
 
 use crate::{
@@ -14,10 +12,10 @@ use crate::{
     texture::{Texture, TextureType},
 };
 
-use super::RenderPass;
+use super::{pipeline::create_pipeline, RenderPass};
 
 pub struct ModelPass {
-    render_pipeline: RenderPipeline,
+    pipeline: RenderPipeline,
     depth_texture: Texture,
 }
 
@@ -49,51 +47,17 @@ impl ModelPass {
             push_constant_ranges: &[],
         });
 
-        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &[Vertex::desc()],
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                unclipped_depth: false,
-                polygon_mode: PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: Some(DepthStencilState {
-                format: Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: CompareFunction::Less,
-                stencil: StencilState::default(),
-                bias: DepthBiasState::default(),
-            }),
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
+        let pipeline = create_pipeline(
+            device,
+            &pipeline_layout,
+            &[Vertex::desc()],
+            config.format,
+            Some(Texture::DEPTH_FORMAT),
+            &shader,
+        );
 
         ModelPass {
-            render_pipeline,
+            pipeline,
             depth_texture,
         }
     }
@@ -134,7 +98,7 @@ impl RenderPass for ModelPass {
             timestamp_writes: None,
         });
 
-        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, camera, &[]);
         render_pass.set_bind_group(3, &world.lights_bind_group, &[]);
 
