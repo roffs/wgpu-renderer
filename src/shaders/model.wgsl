@@ -2,7 +2,7 @@ struct Vertex {
     @location(0) position: vec3f,
     @location(1) uv: vec2f,
     @location(2) normal: vec3f,
-    @location(3) tangent: vec3f,
+    @location(3) tangent: vec4f,
 }
 
 struct VSOut {
@@ -47,10 +47,10 @@ fn vs_main(
     vsout.uv = vertex.uv;
     vsout.world_position = vertex_world_position;
     vsout.normal = normalize((transform.normal * vec4f(vertex.normal, 1.0)).xyz);
-    vsout.tangent = normalize((transform.normal * vec4f(vertex.tangent, 1.0)).xyz);
+    vsout.tangent = normalize((transform.normal * vertex.tangent).xyz);
     // re-orthogonalize tangent with respect to normal
     vsout.tangent = normalize(vsout.tangent - dot(vsout.tangent, vsout.normal) * vsout.normal);
-    vsout.bitangent = cross(vsout.normal, vsout.tangent);
+    vsout.bitangent = cross(vsout.tangent, vsout.normal) * vertex.tangent.w; // Correct right-handness
     
     return vsout;
 }

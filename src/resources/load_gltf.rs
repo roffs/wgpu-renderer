@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use cgmath::{InnerSpace, Vector2, Vector3};
+use cgmath::{InnerSpace, Vector2, Vector3, Vector4};
 use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use wgpu::{Device, Queue, TextureFormat};
 
@@ -108,12 +108,10 @@ impl Resources {
 
             let normals = reader.read_normals().unwrap().collect::<Vec<_>>();
 
-            let tangents = reader
-                .read_tangents()
-                .map(|iter| iter.map(|t| [t[0], t[1], t[2]]).collect::<Vec<_>>());
+            let tangents = reader.read_tangents().map(|iter| iter.collect());
 
             let tangents = tangents.unwrap_or_else(|| {
-                let mut tangents = vec![Vector3::<f32>::new(0.0, 0.0, 0.0); positions.len()];
+                let mut tangents = vec![Vector4::<f32>::new(0.0, 0.0, 0.0, 0.0); positions.len()];
                 let mut times_used = vec![0.0; positions.len()];
 
                 for i in indices.chunks(3) {
@@ -136,13 +134,18 @@ impl Resources {
                     let delta_uv2 = uv2 - uv0;
 
                     let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
-                    let mut tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
+                    let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
                     let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * r;
 
-                    // Flip tangent if uvs are mirrored
-                    if Vector3::from(normals[i1]).dot(tangent.cross(bitangent)) < 0.0 {
-                        tangent.x *= -1.0;
-                    }
+                    // Right-handness info for mirrored uvs
+                    let right_handness =
+                        if Vector3::from(normals[i1]).dot(tangent.cross(bitangent)) > 0.0 {
+                            1.0
+                        } else {
+                            -1.0
+                        };
+
+                    let tangent = Vector4::new(tangent.x, tangent.y, tangent.z, right_handness);
 
                     tangents[i1] += tangent;
                     tangents[i2] += tangent;
@@ -158,7 +161,7 @@ impl Resources {
                     .into_iter()
                     .zip(times_used.iter())
                     .map(|(tangent, times_used)| (tangent / *times_used).normalize().into())
-                    .collect::<Vec<[f32; 3]>>();
+                    .collect::<Vec<[f32; 4]>>();
 
                 tangents
             });
