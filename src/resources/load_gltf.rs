@@ -219,11 +219,11 @@ impl Resources {
             let metallic_roughness_texture = material
                 .pbr_metallic_roughness()
                 .metallic_roughness_texture()
-                .map(|texture| load_texture(&texture.texture(), Texture::SRGBA_UNORM));
+                .map(|texture| load_texture(&texture.texture(), Texture::RGBA_UNORM));
 
             let ambient_occlusion_texture = material
                 .occlusion_texture()
-                .map(|texture| load_texture(&texture.texture(), Texture::SRGBA_UNORM));
+                .map(|texture| load_texture(&texture.texture(), Texture::RGBA_UNORM));
 
             Material::new(
                 base_color,

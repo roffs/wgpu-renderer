@@ -85,54 +85,51 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     
     var albedo = get_albedo(vsout.uv);
     var normal = get_normal(vsout);
-    var metalness = get_metalness(vsout.uv);
+    var metallic = get_metalness(vsout.uv);
     var roughness = get_roughness(vsout.uv);
     var ao = get_ambient_occlussion(vsout.uv);
-
-    /// CALCULATE PBR
+    
     var world_position = vsout.world_position.xyz;
 
-    var N = normal;
     var V = normalize(camera.position - world_position);
+    var F0 = mix(vec3(0.04), albedo, metallic);
 
-    var F0 = mix(vec3f(0.04), albedo, metalness);
 
-    // reflectance equation
-    var Lo = vec3f(0.0);
+     // Over all lights:
+    var Lo = vec3(0.0);
+
     for (var i: u32 = 0; i < arrayLength(&lights); i = i + 1 ) {
         var light = lights[i];
-        
-        // calculate per-light radiance
+
         var L = normalize(light.position - world_position);
         var H = normalize(V + L);
 
-        var attenuation = calc_attenuation(vsout, light);
-        var radiance = light.color * attenuation;
+        var light_distance = length(light.position - world_position);
+        var attenuation = 1.0 / (light_distance * light_distance);
+        var light_radiance = light.color * attenuation;
 
-         // Cook-Torrance BRDF
-        var NDF = calc_distribution_GGX(N, H, roughness);
-        var G = calc_geometry_Smith(N, V, L, roughness);      
-        var F = calc_fresnel_Schlick(clamp(dot(H, V), 0.0, 1.0), F0);
-           
-        var numerator = NDF * G * F; 
-        var denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero
+        // Calculate Cook-Torrance specular BRDF: DFG / 4(ωo⋅n)(ωi⋅n)
+        var F = fresnel_schlick(max( dot(H, V), 0.0 ), F0);
+        var D = distribution_ggx(normal, H, roughness);
+        var G = geometry_smith(normal, V, L, roughness);
+
+        var numerator = D*F*G;
+        var denominator = 4.0 * max(dot(normal, V), 0.0) * max(dot(normal, L), 0.0) + 0.001;
         var specular = numerator / denominator;
 
+        // Calculate ratio of reflected-refracted light.
         var kS = F;
         var kD = vec3f(1.0) - kS;
-        kD *= 1.0 - metalness;	  
 
-        // scale light by NdotL
-        var NdotL = max(dot(N, L), 0.0);        
-        var Loi = (kD * albedo / PI + specular) * radiance * NdotL;
+        kD *= 1.0 - metallic;	
 
-        // TODO figure out why some components are negative and remove this :-D
-        Loi.x = max(Loi.x, 0.0);
-        Loi.y = max(Loi.y, 0.0);
-        Loi.z = max(Loi.z, 0.0);
-        
+        // Calculate output radiance.
+        var NdotL = max(dot(normal, L), 0.0);
+
+        var Loi = (kD * albedo / PI + specular) * light_radiance * NdotL;
+
         // add to outgoing radiance Lo
-        var shadow = calc_shadow(vsout, i);
+        var shadow = shadow(vsout, i);
         Lo += Loi * (1.0 - shadow);
     }
 
@@ -141,6 +138,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     
     var color = ambient + Lo;
     return vec4f(color, 1.0);
+
 }
 
 fn calc_attenuation(vsout: VSOut, light: PointLight) -> f32 {
@@ -155,7 +153,7 @@ fn calc_attenuation(vsout: VSOut, light: PointLight) -> f32 {
     return attenuation;
 }
 
-fn calc_shadow(vsout: VSOut, i: u32) -> f32 {
+fn shadow(vsout: VSOut, i: u32) -> f32 {
     let light = lights[i];
     let tex = shadow_maps[i];
     let samp = shadow_maps_samplers[i];
@@ -174,7 +172,8 @@ fn calc_shadow(vsout: VSOut, i: u32) -> f32 {
     return shadow;
 }
 
-fn calc_distribution_GGX(N: vec3f, H: vec3f, a: f32) -> f32 {
+fn distribution_ggx(N: vec3f, H: vec3f, roughness: f32) -> f32 {
+    var a = roughness * roughness;
     var a2 = a*a;
     var NdotH  = max(dot(N, H), 0.0);
     var NdotH2 = NdotH*NdotH;
@@ -183,26 +182,29 @@ fn calc_distribution_GGX(N: vec3f, H: vec3f, a: f32) -> f32 {
     var denom  = (NdotH2 * (a2 - 1.0) + 1.0);
     denom = PI * denom * denom;
 	
-    return nom / denom;
+    return nom / denom;    
 }
 
-fn calc_geometry_Schlick_GGX(NdotV: f32, k: f32) -> f32 {
+fn geometry_schlick_ggx(NdotV: f32, roughness: f32) -> f32 {
+    var r = (roughness + 1.0);
+    var k = (r * r) / 8.0;
+
     var nom   = NdotV;
     var denom = NdotV * (1.0 - k) + k;
 	
     return nom / denom;
 }
   
-fn calc_geometry_Smith(N: vec3f, V: vec3f, L: vec3f, k: f32) -> f32 {
+fn geometry_smith(N: vec3f, V: vec3f, L: vec3f, roughness: f32) -> f32 {
     var NdotV = max(dot(N, V), 0.0);
     var NdotL = max(dot(N, L), 0.0);
-    var ggx1 = calc_geometry_Schlick_GGX(NdotV, k);
-    var ggx2 = calc_geometry_Schlick_GGX(NdotL, k);
+    var ggx1 = geometry_schlick_ggx(NdotV, roughness);
+    var ggx2 = geometry_schlick_ggx(NdotL, roughness);
 	
     return ggx1 * ggx2;
 }
 
-fn calc_fresnel_Schlick(cosTheta: f32, F0: vec3f) -> vec3f {
+fn fresnel_schlick(cosTheta: f32, F0: vec3f) -> vec3f {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
