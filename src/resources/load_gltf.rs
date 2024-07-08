@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use cgmath::{InnerSpace, Vector2, Vector3, Vector4};
+use cgmath::{InnerSpace, Vector2, Vector3};
 use gltf::{Gltf, Mesh as GltfMesh, Node as GltfNode, Scene as GltfScene};
 use wgpu::{Device, Queue, TextureFormat};
 
@@ -111,8 +111,8 @@ impl Resources {
             let tangents = reader.read_tangents().map(|iter| iter.collect());
 
             let tangents = tangents.unwrap_or_else(|| {
-                let mut tangents = vec![Vector4::<f32>::new(0.0, 0.0, 0.0, 0.0); positions.len()];
-                let mut times_used = vec![0.0; positions.len()];
+                let mut tangents = vec![Vector3::<f32>::new(0.0, 0.0, 0.0); positions.len()];
+                let mut bitangents = vec![Vector3::<f32>::new(0.0, 0.0, 0.0); positions.len()];
 
                 for i in indices.chunks(3) {
                     let i1 = i[0] as usize;
@@ -137,33 +137,29 @@ impl Resources {
                     let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
                     let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * r;
 
-                    // Right-handness info for mirrored uvs
-                    let right_handness =
-                        if Vector3::from(normals[i1]).dot(tangent.cross(bitangent)) > 0.0 {
-                            1.0
-                        } else {
-                            -1.0
-                        };
-
-                    let tangent = Vector4::new(tangent.x, tangent.y, tangent.z, right_handness);
-
                     tangents[i1] += tangent;
                     tangents[i2] += tangent;
                     tangents[i3] += tangent;
 
-                    times_used[i1] += 1.0;
-                    times_used[i2] += 1.0;
-                    times_used[i3] += 1.0;
+                    bitangents[i1] += bitangent;
+                    bitangents[i2] += bitangent;
+                    bitangents[i3] += bitangent;
                 }
 
-                // Average tangents of vertices that appear in multiple triangles
-                let tangents = tangents
-                    .into_iter()
-                    .zip(times_used.iter())
-                    .map(|(tangent, times_used)| (tangent / *times_used).normalize().into())
-                    .collect::<Vec<[f32; 4]>>();
-
                 tangents
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, t)| {
+                        let b = bitangents[i];
+                        let n = Vector3::from(normals[i]);
+
+                        // re-orthogonalize tangent with respect to normal and calculat handeness
+                        let tangent = (t - n.dot(t) * n).normalize();
+                        let handedness = if n.dot(t.cross(b)) > 0.0 { 1.0 } else { -1.0 };
+
+                        [tangent.x, tangent.y, tangent.z, handedness]
+                    })
+                    .collect::<Vec<_>>()
             });
 
             let vertices = (0..positions.len())

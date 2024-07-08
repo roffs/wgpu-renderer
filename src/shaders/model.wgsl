@@ -48,9 +48,7 @@ fn vs_main(
     vsout.world_position = vertex_world_position;
     vsout.normal = normalize((transform.normal * vec4f(vertex.normal, 1.0)).xyz);
     vsout.tangent = normalize((transform.normal * vertex.tangent).xyz);
-    // re-orthogonalize tangent with respect to normal
-    vsout.tangent = normalize(vsout.tangent - dot(vsout.tangent, vsout.normal) * vsout.normal);
-    vsout.bitangent = cross(vsout.tangent, vsout.normal) * vertex.tangent.w; // Correct right-handness
+    vsout.bitangent = cross(vsout.tangent, vsout.normal) * vertex.tangent.w; // Correct right-handeness
     
     return vsout;
 }
