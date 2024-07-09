@@ -11,14 +11,13 @@ use winit::{
 use crate::{
     camera::{Camera, CameraController},
     entity::{Entity, Geometry, Mesh, Node},
-    environment_map::EnvironmentMap,
     gpu_context::GpuContext,
     layouts::Layouts,
     light::PointLight,
     material::Material,
-    render_pass::{HdrPipeline, ModelPass, ShadowPass, SkyboxPass},
+    render_pass::{HdrPipeline, PbrPass, ShadowPass, SkyboxPass},
     render_world::RenderWorld,
-    resources::Resources,
+    resources::{HdrLoader, Resources},
     scene::Scene,
     surface_context::SurfaceContext,
     texture::Texture,
@@ -30,7 +29,7 @@ pub struct App {
     camera_controller: CameraController,
     camera: Camera,
     scene: Scene,
-    model_pass: ModelPass,
+    model_pass: PbrPass,
     skybox_pass: SkyboxPass,
     shadow_pass: ShadowPass,
     hdr_pipeline: HdrPipeline,
@@ -167,18 +166,16 @@ impl App {
         let second_light = PointLight::new((-5.0, 4.0, 10.0), (0.0, 0.0, 150.0));
         let third_light = PointLight::new((-1.5, 5.0, 2.0), (150.0, 150.0, 150.0));
 
-        // SKYBOX
+        // NEW SKYBOX WITH HDR
 
-        let env_map_paths = [
-            Path::new("./assets/skybox/sky/right.jpg"),
-            Path::new("./assets/skybox/sky/left.jpg"),
-            Path::new("./assets/skybox/sky/top.jpg"),
-            Path::new("./assets/skybox/sky/bottom.jpg"),
-            Path::new("./assets/skybox/sky/front.jpg"),
-            Path::new("./assets/skybox/sky/back.jpg"),
-        ];
-
-        let env_map = EnvironmentMap::from(Resources::load_cube_map(device, queue, env_map_paths));
+        let hdr_loader = HdrLoader::new(device);
+        let env_map = hdr_loader.load(
+            device,
+            queue,
+            Path::new("./assets/skybox/autumn_sky_2k.hdr"),
+            1080,
+            Some("Sky texture"),
+        );
 
         // SCENE
 
@@ -192,7 +189,7 @@ impl App {
             env_map,
         };
 
-        let model_pass = ModelPass::new(device, surface.config(), &layouts);
+        let model_pass = PbrPass::new(device, surface.config(), &layouts);
         let skybox_pass = SkyboxPass::new(device, &layouts);
         let shadow_pass = ShadowPass::new(device, &layouts);
 

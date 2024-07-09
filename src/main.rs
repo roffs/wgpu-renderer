@@ -1,7 +1,6 @@
 mod app;
 mod camera;
 mod entity;
-mod environment_map;
 mod gpu_context;
 mod layouts;
 mod light;

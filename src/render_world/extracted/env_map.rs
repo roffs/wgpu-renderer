@@ -2,18 +2,14 @@ use std::ops::Deref;
 
 use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, Device};
 
-use crate::environment_map::EnvironmentMap;
+use crate::texture::CubeMap;
 
 pub struct ExtractedEnvMap {
     bind_group: BindGroup,
 }
 
 impl ExtractedEnvMap {
-    pub fn new(
-        device: &Device,
-        layout: &BindGroupLayout,
-        env_map: &EnvironmentMap,
-    ) -> ExtractedEnvMap {
+    pub fn new(device: &Device, layout: &BindGroupLayout, env_map: &CubeMap) -> ExtractedEnvMap {
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Skybox bind group"),
             layout,

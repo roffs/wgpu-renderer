@@ -17,9 +17,9 @@ pub use extracted::ExtractedCamera;
 use crate::{
     camera::Camera,
     entity::{Entity, Mesh, Node},
-    environment_map::EnvironmentMap,
     layouts::Layouts,
     light::PointLight,
+    texture::CubeMap,
 };
 
 pub struct RenderWorld {
@@ -39,7 +39,7 @@ impl RenderWorld {
         entities: &[Entity],
         camera: &Camera,
         lights: &[PointLight],
-        env_map: &EnvironmentMap,
+        env_map: &CubeMap,
     ) -> RenderWorld {
         let mut materials = vec![];
         let mut objects = vec![];

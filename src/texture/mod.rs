@@ -1,7 +1,7 @@
 mod cubemap;
 
 use wgpu::{
-    Device, Extent3d, ImageCopyTextureBase, ImageDataLayout, Origin3d, Queue, Sampler,
+    Device, Extent3d, ImageCopyTexture, ImageDataLayout, Origin3d, Queue, Sampler,
     TextureDescriptor, TextureFormat, TextureUsages, TextureView,
 };
 
@@ -21,6 +21,7 @@ impl Texture {
     pub const RGBA_UNORM: TextureFormat = TextureFormat::Rgba8Unorm;
     pub const DEPTH_32_FLOAT: TextureFormat = TextureFormat::Depth32Float;
     pub const RGBA_16_FLOAT: TextureFormat = TextureFormat::Rgba16Float;
+    pub const RGBA_32_FLOAT: TextureFormat = TextureFormat::Rgba32Float;
 
     pub fn new(
         device: &Device,
@@ -68,7 +69,7 @@ impl Texture {
 
     pub fn write(&self, queue: &Queue, data: &[u8]) {
         queue.write_texture(
-            ImageCopyTextureBase {
+            ImageCopyTexture {
                 texture: &self.texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
@@ -77,7 +78,7 @@ impl Texture {
             data,
             ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * self.texture.width()),
+                bytes_per_row: Some(self.texture.width() * std::mem::size_of::<[u8; 4]>() as u32),
                 rows_per_image: Some(self.texture.height()),
             },
             self.texture.size(),
@@ -102,6 +103,46 @@ impl Texture {
             TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
         );
         texture.write(queue, data);
+
+        texture
+    }
+
+    pub fn write_hdr(&self, queue: &Queue, data: &[u8]) {
+        queue.write_texture(
+            ImageCopyTexture {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            data,
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(self.texture.width() * std::mem::size_of::<[f32; 4]>() as u32),
+                rows_per_image: Some(self.texture.height()),
+            },
+            self.texture.size(),
+        );
+    }
+
+    pub fn init_hdr(
+        device: &Device,
+        queue: &Queue,
+        width: u32,
+        height: u32,
+        data: &[u8],
+        label: Option<&str>,
+        format: TextureFormat,
+    ) -> Texture {
+        let texture = Texture::new(
+            device,
+            width,
+            height,
+            label,
+            format,
+            TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+        );
+        texture.write_hdr(queue, data);
 
         texture
     }
