@@ -1,7 +1,7 @@
-use crate::{entity::Entity, light::PointLight, texture::CubeMap};
+use crate::{entity::Entity, light::PointLight, skybox::Skybox};
 
 pub struct Scene {
     pub entities: Vec<Entity>,
     pub lights: Vec<PointLight>,
-    pub env_map: CubeMap,
+    pub skybox: Skybox,
 }

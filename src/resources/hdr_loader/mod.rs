@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use wgpu::{
     include_wgsl, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, ComputePassDescriptor, ComputePipeline,
@@ -8,9 +6,7 @@ use wgpu::{
     TextureViewDimension,
 };
 
-use crate::texture::CubeMap;
-
-use super::Resources;
+use crate::texture::{CubeMap, Texture};
 
 pub struct HdrLoader {
     texture_format: TextureFormat,
@@ -19,7 +15,7 @@ pub struct HdrLoader {
 }
 
 impl HdrLoader {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device) -> HdrLoader {
         let module = device.create_shader_module(include_wgsl!("equirectangular.wgsl"));
 
         let texture_format = CubeMap::RGBA_32_FLOAT;
@@ -74,45 +70,42 @@ impl HdrLoader {
         &self,
         device: &Device,
         queue: &Queue,
-        path: &Path,
+        hdr_texture: &Texture,
         dst_size: u32,
-        label: Option<&str>,
     ) -> CubeMap {
-        let src = Resources::load_hdr_texture(device, queue, path);
-
-        let dst = CubeMap::new(
+        let env_map = CubeMap::new(
             device,
             dst_size,
             dst_size,
             self.texture_format,
             TextureUsages::STORAGE_BINDING | TextureUsages::TEXTURE_BINDING,
-            label,
+            Some("Environment map"),
         );
 
-        let dst_view = dst.texture.create_view(&TextureViewDescriptor {
-            label,
+        let env_map_view = env_map.texture.create_view(&TextureViewDescriptor {
+            label: Some("Environment map view"),
             dimension: Some(TextureViewDimension::D2Array),
             ..Default::default()
         });
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label,
+            label: Some("Environment map bind group"),
             layout: &self.bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&src.view),
+                    resource: BindingResource::TextureView(&hdr_texture.view),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::TextureView(&dst_view),
+                    resource: BindingResource::TextureView(&env_map_view),
                 },
             ],
         });
 
         let mut encoder = device.create_command_encoder(&Default::default());
         let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label,
+            label: Some("Environment map compute pass"),
             ..Default::default()
         });
 
@@ -125,6 +118,6 @@ impl HdrLoader {
 
         queue.submit([encoder.finish()]);
 
-        dst
+        env_map
     }
 }

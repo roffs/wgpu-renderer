@@ -7,7 +7,7 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(
-    @builtin(vertex_index) vi: u32,
+    @builtin(vertex_index) vi: u32
 ) -> VertexOutput {
     var out: VertexOutput;
     out.uv = vec2<f32>(

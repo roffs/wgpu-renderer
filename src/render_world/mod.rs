@@ -19,7 +19,7 @@ use crate::{
     entity::{Entity, Mesh, Node},
     layouts::Layouts,
     light::PointLight,
-    texture::CubeMap,
+    skybox::Skybox,
 };
 
 pub struct RenderWorld {
@@ -28,7 +28,7 @@ pub struct RenderWorld {
     materials: Vec<ExtractedMaterial>,
     pub lights: Vec<ExtractedPointLight>,
     pub lights_bind_group: BindGroup,
-    pub env_map: ExtractedEnvMap,
+    pub env_map: ExtractedEnvMap, // TODO change to ExtractedSkybox
 }
 
 impl RenderWorld {
@@ -39,7 +39,7 @@ impl RenderWorld {
         entities: &[Entity],
         camera: &Camera,
         lights: &[PointLight],
-        env_map: &CubeMap,
+        skybox: &Skybox,
     ) -> RenderWorld {
         let mut materials = vec![];
         let mut objects = vec![];
@@ -58,7 +58,7 @@ impl RenderWorld {
             .iter()
             .map(|l| ExtractedPointLight::new(device, layouts, l))
             .collect::<Vec<_>>();
-        let env_map = ExtractedEnvMap::new(device, &layouts.cube_map, env_map);
+        let env_map = ExtractedEnvMap::new(device, &layouts.cube_map, &skybox.irr_map); // CHANGE HERE
 
         // TODO move this somewhere else
         // -----------------------------------------------------------------------------------

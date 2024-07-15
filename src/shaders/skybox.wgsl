@@ -36,6 +36,9 @@ var env_sampler: sampler;
 @group(1) @binding(1) 
 var env_map: texture_cube<f32>;
 
+
+// Couldnt we transform in the vertex shader? 
+
 @fragment 
 fn fs_main(in: VSOut) -> @location(0) vec4f {
     let view_pos_homogeneous = camera.inv_proj * in.clip_position;

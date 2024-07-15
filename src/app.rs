@@ -17,7 +17,7 @@ use crate::{
     material::Material,
     render_pass::{HdrPipeline, PbrPass, ShadowPass, SkyboxPass},
     render_world::RenderWorld,
-    resources::{HdrLoader, Resources},
+    resources::{Resources, SkyboxLoader},
     scene::Scene,
     surface_context::SurfaceContext,
     texture::Texture,
@@ -168,13 +168,14 @@ impl App {
 
         // NEW SKYBOX WITH HDR
 
-        let hdr_loader = HdrLoader::new(device);
-        let env_map = hdr_loader.load(
+        let skybox_loader = SkyboxLoader::new(device, &layouts);
+
+        let skybox = skybox_loader.load(
             device,
             queue,
             Path::new("./assets/skybox/autumn_sky_2k.hdr"),
             1080,
-            Some("Sky texture"),
+            &layouts,
         );
 
         // SCENE
@@ -186,7 +187,7 @@ impl App {
         let scene = Scene {
             entities,
             lights,
-            env_map,
+            skybox,
         };
 
         let model_pass = PbrPass::new(device, surface.config(), &layouts);
@@ -273,7 +274,7 @@ impl App {
             &self.scene.entities,
             &self.camera,
             &self.scene.lights,
-            &self.scene.env_map,
+            &self.scene.skybox,
         );
 
         self.generate_shadow_maps(device, queue, &render_world);

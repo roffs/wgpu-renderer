@@ -9,6 +9,7 @@ mod render_pass;
 mod render_world;
 mod resources;
 mod scene;
+mod skybox;
 mod surface_context;
 mod texture;
 mod transform;
