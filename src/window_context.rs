@@ -23,9 +23,7 @@ impl WindowContext {
             .build(&event_loop)
             .unwrap();
 
-        window
-            .set_cursor_grab(winit::window::CursorGrabMode::Confined)
-            .unwrap();
+        let _ = window.set_cursor_grab(winit::window::CursorGrabMode::Confined);
 
         window.set_cursor_visible(false);
 

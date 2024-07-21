@@ -80,6 +80,7 @@ impl ShadowPass {
             }),
             multisample: MultisampleState::default(),
             multiview: None,
+            cache: None,
         });
 
         ShadowPass {

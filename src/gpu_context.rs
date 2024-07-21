@@ -1,5 +1,6 @@
 use wgpu::{
-    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, RequestAdapterOptions,
+    DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, MemoryHints,
+    RequestAdapterOptions,
 };
 
 use crate::surface_context::SurfaceContext;
@@ -36,6 +37,7 @@ impl GpuContext {
                         label: Some("Device"),
                         required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | Features::DEPTH_CLIP_CONTROL,
                         required_limits: Limits::default(),
+                        memory_hints: MemoryHints::default()
                     },
                     None,
                 )
