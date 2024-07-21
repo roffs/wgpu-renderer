@@ -168,14 +168,13 @@ impl App {
 
         // NEW SKYBOX WITH HDR
 
-        let skybox_loader = SkyboxLoader::new(device, &layouts);
+        let skybox_loader = SkyboxLoader::new(device);
 
         let skybox = skybox_loader.load(
             device,
             queue,
-            Path::new("./assets/skybox/autumn_sky_2k.hdr"),
-            1080,
-            &layouts,
+            Path::new("./assets/skybox/studio_2k.hdr"),
+            512,
         );
 
         // SCENE

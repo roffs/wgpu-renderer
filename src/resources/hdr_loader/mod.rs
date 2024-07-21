@@ -67,7 +67,7 @@ impl HdrLoader {
         }
     }
 
-    pub fn load(
+    pub fn generate(
         &self,
         device: &Device,
         queue: &Queue,
@@ -110,10 +110,9 @@ impl HdrLoader {
             ..Default::default()
         });
 
-        let num_workgroups = (dst_size + 15) / 16;
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups(num_workgroups, num_workgroups, 6);
+        pass.dispatch_workgroups(dst_size, dst_size, 6);
 
         drop(pass);
 
