@@ -13,7 +13,7 @@ pub struct IrrMapGenerator {
     bind_group_layout: BindGroupLayout,
     pipeline: ComputePipeline,
 }
-
+// TODO we could store the generated irradiance map into a texture so we don't have to compute it each time, only when we haven't done it before
 impl IrrMapGenerator {
     pub fn new(device: &Device) -> IrrMapGenerator {
         let shader = device.create_shader_module(include_wgsl!("convolution.wgsl"));
@@ -135,10 +135,7 @@ impl IrrMapGenerator {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
 
-        for face_index in 0..6_u32 {
-            pass.set_push_constants(0, &face_index.to_ne_bytes());
-            pass.dispatch_workgroups(dst_size / 16, dst_size / 16, 1);
-        }
+        pass.dispatch_workgroups(dst_size / 16, dst_size / 16, 6);
 
         drop(pass);
 

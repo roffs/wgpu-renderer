@@ -38,6 +38,7 @@ impl GpuContext {
                         required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | Features::DEPTH_CLIP_CONTROL | Features::PUSH_CONSTANTS,
                         required_limits: Limits{
                             max_push_constant_size: 4,
+                            max_bind_groups: 5,
                             ..Default::default()
                         },
                         memory_hints: MemoryHints::default()

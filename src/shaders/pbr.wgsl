@@ -78,7 +78,8 @@ struct PointLight {
 @group(3) @binding(1) var shadow_maps: binding_array<texture_cube<f32>, 3>;
 @group(3) @binding(2) var shadow_maps_samplers: binding_array<sampler, 3>;
 
-
+@group(4) @binding(0) var irrSampler: sampler;
+@group(4) @binding(1) var irrMap: texture_cube<f32>;;
 
 @fragment 
 fn fs_main(vsout: VSOut) -> @location(0) vec4f {
@@ -94,8 +95,7 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     var V = normalize(camera.position - world_position);
     var F0 = mix(vec3(0.04), albedo, metallic);
 
-
-     // Over all lights:
+    // Over all lights:
     var Lo = vec3(0.0);
 
     for (var i: u32 = 0; i < arrayLength(&lights); i = i + 1 ) {
@@ -134,7 +134,14 @@ fn fs_main(vsout: VSOut) -> @location(0) vec4f {
     }
 
     // ambient lighting.
-    var ambient = vec3f(0.05) * albedo * ao;
+    var F = fresnel_schlick_roughness(max(dot(normal, V), 0.0), F0, roughness);
+    var kS = F;
+    var kD = vec3f(1.0) - kS;
+    kD *= 1.0 - metallic;
+    
+    var irradiance = textureSample(irrMap, irrSampler, normal).rgb;
+    var diffuse = irradiance * albedo;
+    var ambient = (kD * diffuse) * ao;
     
     var color = ambient + Lo;
     return vec4f(color, 1.0);
@@ -207,6 +214,11 @@ fn geometry_smith(N: vec3f, V: vec3f, L: vec3f, roughness: f32) -> f32 {
 fn fresnel_schlick(cosTheta: f32, F0: vec3f) -> vec3f {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+
+fn fresnel_schlick_roughness(cosTheta: f32, F0: vec3f, roughness: f32) -> vec3f {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 
 fn get_albedo(uv: vec2f) -> vec3f {
      var textureColor: vec4f;

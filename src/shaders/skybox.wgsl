@@ -31,10 +31,8 @@ struct Camera {
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 
-@group(1) @binding(0) 
-var env_sampler: sampler;
-@group(1) @binding(1) 
-var env_map: texture_cube<f32>;
+@group(1) @binding(0) var env_sampler: sampler;
+@group(1) @binding(1) var env_map: texture_cube<f32>;
 
 
 // Couldnt we transform in the vertex shader? 

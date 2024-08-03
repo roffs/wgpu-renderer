@@ -44,6 +44,7 @@ impl PbrPass {
                 &layouts.transform,
                 &layouts.material,
                 &layouts.light,
+                &layouts.cube_map,
             ],
             push_constant_ranges: &[],
         });

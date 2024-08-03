@@ -3,7 +3,7 @@ mod render_object;
 
 use cgmath::Matrix4;
 use extracted::{
-    ExtractedEnvMap, ExtractedMaterial, ExtractedMesh, ExtractedPointLight, ExtractedTransform,
+    ExtractedMaterial, ExtractedMesh, ExtractedPointLight, ExtractedSkybox, ExtractedTransform,
     PointLightUniform,
 };
 use render_object::{DrawRenderObject, RenderObject};
@@ -28,7 +28,7 @@ pub struct RenderWorld {
     materials: Vec<ExtractedMaterial>,
     pub lights: Vec<ExtractedPointLight>,
     pub lights_bind_group: BindGroup,
-    pub env_map: ExtractedEnvMap, // TODO change to ExtractedSkybox
+    pub skybox: ExtractedSkybox, // TODO change to ExtractedSkybox
 }
 
 impl RenderWorld {
@@ -58,7 +58,7 @@ impl RenderWorld {
             .iter()
             .map(|l| ExtractedPointLight::new(device, layouts, l))
             .collect::<Vec<_>>();
-        let env_map = ExtractedEnvMap::new(device, &layouts.cube_map, &skybox.irr_map); // CHANGE HERE
+        let skybox = ExtractedSkybox::new(device, &layouts.cube_map, skybox);
 
         // TODO move this somewhere else
         // -----------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ impl RenderWorld {
             materials,
             lights,
             lights_bind_group,
-            env_map,
+            skybox,
         }
     }
 }
@@ -228,12 +228,13 @@ pub trait DrawWorld<'a> {
 impl<'a> DrawWorld<'a> for RenderPass<'a> {
     fn draw_world(&mut self, world: &'a RenderWorld) {
         for render_object in &world.objects {
+            self.set_bind_group(4, &world.skybox.irr_map_bind_group, &[]);
             self.draw_render_object(render_object, &world.materials)
         }
     }
 
     fn draw_skybox(&mut self, world: &'a RenderWorld) {
-        self.set_bind_group(1, &world.env_map, &[]);
+        self.set_bind_group(1, &world.skybox.env_map_bind_group, &[]);
         self.draw(0..3, 0..1)
     }
 }

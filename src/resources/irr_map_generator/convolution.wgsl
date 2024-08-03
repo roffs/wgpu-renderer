@@ -23,8 +23,6 @@ var env_map_sampler: sampler;
 @binding(2)
 var dst: texture_storage_2d_array<rgba32float, write>;
 
-var<push_constant> face_index: u32;
-
 @compute
 @workgroup_size(16, 16, 1)
 fn compute_irr_map(
@@ -83,7 +81,7 @@ fn compute_irr_map(
     let cube_uv = (vec2<f32>(gid.xy) / dst_dimensions) * 2.0 - 1.0; // Mapping to [-1, 1]
 
     // Get spherical coordinate from cube_uv
-    let face = FACES[face_index];
+    let face = FACES[gid.z];
     var normal = normalize(face.forward + face.right * cube_uv.x + face.up * cube_uv.y);
     normal.y *= -1.0;
 
@@ -111,5 +109,5 @@ fn compute_irr_map(
     
     irradiance = PI * irradiance / f32(nr_samples);
     
-    textureStore(dst, gid.xy, face_index, vec4f(irradiance, 1.0));
+    textureStore(dst, gid.xy, gid.z, vec4f(irradiance, 1.0));
 }
